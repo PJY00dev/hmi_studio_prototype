@@ -28,7 +28,7 @@ export function normalizeNaverMapConfig(config = {}) {
 }
 
 export function toNaverMapsSdkUrl(ncpKeyId) {
-  return `${NAVER_SDK_BASE_URL}?ncpKeyId=${encodeURIComponent(ncpKeyId)}&submodules=geocoder,gl`;
+  return `${NAVER_SDK_BASE_URL}?ncpKeyId=${encodeURIComponent(ncpKeyId)}&submodules=geocoder,gl&v=20260606035443`;
 }
 
 export function toNaverCompatibleLocalUrl(href) {
@@ -190,12 +190,13 @@ export function extractMultipleNaverRoutes(payload) {
   } else {
     // Generate simulated alternative with opposite parallel offset
     const path3 = offsetPath(formattedBase.path, -0.00022);
+    const duration3 = Math.round(formattedBase.duration * 0.90);
     route3 = {
       ...formattedBase,
       id: "highway",
       name: "고속도로 우선",
-      duration: formattedBase.duration,
-      durationText: formattedBase.durationText,
+      duration: duration3,
+      durationText: formatDuration(duration3),
       distance: Math.round(formattedBase.distance * 1.03),
       distanceText: formatRouteDistance(formattedBase.distance * 1.03),
       taxiFare: formattedBase.taxiFare + 1200,
@@ -223,7 +224,8 @@ function parseSingleRoute(route) {
     guides: (route.guide || []).map((guide) => ({
       name: guide.instructions || "Continue",
       distance: guide.distance || 0,
-      duration: guide.duration || 0
+      duration: guide.duration || 0,
+      type: guide.type
     })),
     sections: (route.section || []).map((sec) => ({
       pointIndex: sec.pointIndex,

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vehicle HMI Prototype</title>
-    <link rel="stylesheet" href="./styles.css?v=124" />
+    <link rel="stylesheet" href="./styles.css?v=132" />
   </head>
   <body>
     <script>
@@ -12,7 +12,7 @@
         document.documentElement.classList.add("file-protocol");
       }
     </script>
-    <main class="stage" aria-label="Galaxy Tab S7 FE landscape prototype">
+    <main class="stage" aria-label="Responsive Connect HMI prototype">
       <section class="tablet">
         <div class="screen">
           <section class="file-warning" aria-live="polite">
@@ -74,6 +74,7 @@
               <span id="clock">오후 11:30</span>
             </div>
           </header>
+          <div class="mode-toast" id="modeToast" role="status" aria-live="polite" hidden></div>
 
           <section class="workspace">
             <aside class="map-panel" aria-label="Map area">
@@ -606,6 +607,7 @@
           </nav>
 
           <section class="apps-layer" id="appsLayer" aria-label="Applications" hidden>
+            <div class="apps-drag-handle" id="appsDragHandle" aria-hidden="true"></div>
             <h1>Applications</h1>
             <div class="apps-grid" id="appsGrid"></div>
             <div class="apps-footer">
@@ -621,6 +623,7 @@
           </section>
 
           <section class="vehicle-settings-layer" id="vehicleSettingsLayer" aria-label="Vehicle settings" hidden>
+            <div class="settings-drag-handle" id="settingsDragHandle" aria-hidden="true"></div>
             <aside class="settings-nav" id="settingsNav" aria-label="Vehicle setting categories"></aside>
             <section class="settings-detail" id="settingsDetail" aria-live="polite"></section>
           </section>
@@ -707,6 +710,6 @@
     </main>
 
     <script src="./map-config.js?v=109"></script>
-    <script type="module" src="./app.js?v=124"></script>
+    <script type="module" src="./app.js?v=133"></script>
   </body>
 </html>

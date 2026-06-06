@@ -11,3 +11,8 @@ export function searchMediaCatalog(catalog, query, type) {
       return [item.title, item.creator, item.description].some((value) => normalize(value).includes(normalizedQuery));
     });
 }
+
+export function searchMediaCatalogWithFallback(catalog, query, type) {
+  const results = searchMediaCatalog(catalog, query, type);
+  return results.length ? results : searchMediaCatalog(catalog, "", type);
+}

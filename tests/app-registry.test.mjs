@@ -13,13 +13,12 @@ import {
 
 test("derives launcher, edit, settings, and media app data from one app registry", () => {
   const launcherIds = APP_REGISTRY.filter((app) => app.surfaces?.launcher).map((app) => app.id);
-  const editIds = APP_REGISTRY.filter((app) => app.surfaces?.edit).map((app) => app.id);
   const settingsIds = APP_REGISTRY
     .filter((app) => app.settings)
     .map((app) => app.settings.id || app.id);
 
   assert.deepEqual(ALL_APPS.map((app) => app.appId), launcherIds);
-  assert.deepEqual(EDIT_APPS, editIds);
+  assert.deepEqual(EDIT_APPS, launcherIds);
   assert.deepEqual(APP_SETTING_APPS.map((app) => app.id), settingsIds);
   assert.deepEqual(Object.keys(MEDIA_APP_META), ["youtube", "spotify"]);
 });

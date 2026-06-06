@@ -17,8 +17,9 @@ import {
   selectGeneralOption,
   toggleGeneralBoolean
 } from "./general-settings-utils.js";
-import { searchMediaCatalog } from "./media-search-utils.js";
+import { searchMediaCatalog, searchMediaCatalogWithFallback } from "./media-search-utils.js";
 import { rawMapWidthFromPointer, snapMapWidth } from "./resize-utils.js?v=111";
+import { applyCanvasFitScale } from "./canvas-fit-utils.js?v=1";
 import { closeVehicleInfoModal, createVehicleInfoState, toggleVehicleInfoFlag } from "./vehicle-info-utils.js";
 import { svgIcon } from "./icon-registry.js?v=2";
 import {
@@ -33,11 +34,20 @@ import {
 
 const FIXED_DRIVING_VIEW_WIDTH = 32.708333;
 
+function syncCanvasFitScale() {
+  applyCanvasFitScale();
+}
+
+syncCanvasFitScale();
+window.addEventListener("resize", syncCanvasFitScale, { passive: true });
+window.addEventListener("orientationchange", syncCanvasFitScale, { passive: true });
+
 const workspace = document.querySelector(".workspace");
 const mapEdgeResizer = document.querySelector("#mapEdgeResizer");
 const shortcutGrid = document.querySelector("#shortcutGrid");
 const cardLimit = document.querySelector("#cardLimit");
 const modeTabs = document.querySelectorAll(".mode-tab");
+const modeToast = document.querySelector("#modeToast");
 const homeTitle = document.querySelector("#homeTitle");
 const destinationInput = document.querySelector("#destinationInput");
 const mapSearch = document.querySelector("#mapSearch");
@@ -72,8 +82,10 @@ const gnbClimateButtons = document.querySelectorAll("[data-gnb-climate-action]")
 const appsLayer = document.querySelector("#appsLayer");
 const appsGrid = document.querySelector("#appsGrid");
 const vehicleSettingsLayer = document.querySelector("#vehicleSettingsLayer");
-const settingsNav = document.querySelector("#settingsNav");
-const settingsDetail = document.querySelector("#settingsDetail");
+const defaultSettingsNav = document.querySelector("#settingsNav");
+const defaultSettingsDetail = document.querySelector("#settingsDetail");
+let settingsNav = defaultSettingsNav;
+let settingsDetail = defaultSettingsDetail;
 const navSearchOverlay = document.querySelector("#navSearchOverlay");
 const navSearchCard = document.querySelector("#navSearchCard");
 const navSearchForm = document.querySelector("#navSearchForm");
@@ -108,6 +120,8 @@ const navStopBtn = document.querySelector("#navStopBtn");
 const routeStartBtn = document.querySelector("#routeStartBtn");
 const navMapSettingsBtn = document.querySelector("#navMapSettingsBtn");
 const routeCardCloseBtn = document.querySelector("#routeCardCloseBtn");
+
+let isCameraTracking = true;
 
 const naverCompatibleLocalUrl = toNaverCompatibleLocalUrl(window.location.href);
 if (naverCompatibleLocalUrl !== window.location.href) {
@@ -228,7 +242,7 @@ const MODE_META = {
     trackTitle: "Drive Mix",
     artist: "Elysia Biro",
     album: "flow",
-    defaults: ["nav-home", "phone", "spotify", "youtube"]
+    defaults: ["navigation", "call", "spotify", "android-auto"]
   },
   auto: {
     title: "Autonomous Home",
@@ -237,7 +251,7 @@ const MODE_META = {
     trackTitle: "Passenger Mode",
     artist: "Polestar experience",
     album: "ease",
-    defaults: ["video", "office", "spotify", "youtube"]
+    defaults: ["youtube", "chromium", "spotify", "android-auto"]
   }
 };
 
@@ -259,7 +273,7 @@ let routePolylinesList = [];
 let routeArrowMarkers = [];
 let routeDurationBubbles = [];
 let trafficLayerInstance = null;
-let isTrafficLayerActive = true;
+let isTrafficLayerActive = false;
 let naverMapReady = false;
 let naverSdkPromise = null;
 let navResultMarkers = [];
@@ -422,31 +436,56 @@ state.climateTemperatures = {
 
 function removeMusicCard(cards) {
   if (!Array.isArray(cards)) return [];
-  const replacements = ["phone", "energy", "seat", "message", "office", "video", "nav-home", "climate", "camera"];
+  const replacements = ["call", "energy", "message", "youtube", "navigation", "camera"];
   const next = [...cards].filter((id) => id !== "favorite-shortcuts" && id !== "favorite-apps");
 
   next.forEach((id, index) => {
     if (id !== "music") return;
-    next[index] = replacements.find((replacement) => !next.includes(replacement)) || "phone";
+    next[index] = replacements.find((replacement) => !next.includes(replacement)) || "call";
   });
 
   return next.slice(0, 4);
 }
 
+const HOME_CARD_REPLACEMENTS = {
+  phone: "call",
+  "nav-home": "navigation",
+  video: "youtube",
+  office: "chromium",
+  climate: "vehicle",
+  seat: "vehicle",
+  "media-player": "music",
+  "parking-camera": "camera",
+  dashcam: "blackbox"
+};
+
+const HOME_CARD_APP_IDS = new Set(EDIT_APPS);
+
+function normalizeHomeCardIds(cards) {
+  const next = [];
+
+  cards.forEach((id) => {
+    const normalizedId = HOME_CARD_REPLACEMENTS[id] || id;
+    if (!HOME_CARD_APP_IDS.has(normalizedId)) return;
+    if (next.includes(normalizedId)) return;
+    next.push(normalizedId);
+  });
+
+  return next;
+}
+
 function applyHomeCardDefaults(cards, defaults = []) {
-  const next = removeMusicCard(cards);
+  const next = normalizeHomeCardIds(removeMusicCard(cards));
   const fallbackCards = [
     ...defaults,
-    "nav-home",
-    "phone",
+    "navigation",
+    "call",
     "spotify",
     "youtube",
     "energy",
-    "seat",
     "message",
-    "office",
-    "video",
-    "climate",
+    "vehicle",
+    "chromium",
     "camera"
   ];
 
@@ -711,50 +750,163 @@ function renderPleosMediaRows(results, selected, fallback) {
   `).join("");
 }
 
-function renderPleosSpotifyPanel(meta, results, selected, fallback, mediaSubtitle) {
-  const playerTitle = selected?.title || "Title Title Title TitleTitle TitleTitle Title";
-  const playerSubtitle = selected?.creator || "Subtitle Subtitle Subtitle";
+function renderSpotifyTabletRows(results, selected, fallback) {
+  if (mediaSearchLoading) return `<div class="spotify-tablet-state">검색 중...</div>`;
+  if (mediaSearchError) return `<div class="spotify-tablet-state">${escapeHtml(mediaSearchError)}</div>`;
+  if (!results.length) return `<div class="spotify-tablet-state">검색어를 입력하고 음악을 찾아보세요.</div>`;
+
+  return results.map((item, index) => `
+    <button class="spotify-tablet-result${selected?.id === item.id ? " selected" : ""}" type="button" data-media-id="${escapeHtml(item.id)}">
+      <span class="spotify-result-index">${index + 1}</span>
+      ${mediaArtwork(item, "spotify-result-art", fallback, item.title)}
+      <span class="spotify-result-copy">
+        <strong>${escapeHtml(item.title)}</strong>
+        <small>${escapeHtml(item.creator)} · ${escapeHtml(item.description)}</small>
+      </span>
+      <span class="spotify-result-duration">${index % 2 ? "3:18" : "3:05"}</span>
+    </button>
+  `).join("");
+}
+
+function renderSpotifyTabletPanel(meta, results, selected, fallback) {
+  const selectedItem = selected || results[0] || null;
+  const musicRecommendations = MEDIA_CATALOG.filter((item) => item.type === "music" && !results.some((result) => result.id === item.id));
+  const queueItems = [...results, ...musicRecommendations].slice(0, 5);
 
   return `
-    <section class="media-app-panel spotify-media-app pleos-media-list-app" aria-label="${meta.title}">
-      <header class="media-app-header pleos-media-app-header">
-        <button class="media-app-back" type="button" data-close-media-app aria-label="홈으로 돌아가기">‹</button>
-        <span class="spotify-brand-icon" aria-hidden="true">${svgIcon("spotify")}</span>
-        <div>
-          <h1>${meta.title}</h1>
-          <p>${mediaSubtitle}</p>
-        </div>
+    <section class="media-app-panel spotify-media-app spotify-tablet-app" aria-label="${meta.title}">
+      <div class="landscape-drag-handle" aria-hidden="true"></div>
+      <header class="media-tablet-topbar">
+        <span class="spotify-brand-icon media-tablet-logo" aria-hidden="true">${svgIcon("spotify")}</span>
+        <form class="media-search-form media-tablet-search" id="mediaSearchForm">
+          <input id="mediaSearchInput" type="search" value="${escapeHtml(mediaSearchQuery)}" placeholder="${meta.placeholder}" autocomplete="off" />
+          <button type="button" id="mediaSearchButton" aria-label="검색">${svgIcon("search")}</button>
+        </form>
       </header>
-      <form class="media-search-form pleos-media-search" id="mediaSearchForm">
-        <input id="mediaSearchInput" type="search" value="${escapeHtml(mediaSearchQuery)}" placeholder="${meta.placeholder}" autocomplete="off" />
-        <button type="button" id="mediaSearchButton" aria-label="검색">${svgIcon("search")}</button>
-      </form>
-      <section class="pleos-media-shell">
-        <nav class="pleos-media-side" aria-label="미디어 메뉴">
-          <button class="pleos-side-button" type="button" aria-label="앨범">${svgIcon("music")}</button>
-          <button class="pleos-side-button active" type="button" aria-label="목록">${svgIcon("youtube")}</button>
-          <button class="pleos-side-button" type="button" aria-label="재생목록">${svgIcon("radio")}</button>
-          <button class="pleos-side-button" type="button" aria-label="아티스트">${svgIcon("profile")}</button>
+      <section class="spotify-tablet-shell">
+        <nav class="spotify-tablet-rail" aria-label="Spotify navigation">
+          <button type="button" class="active">${svgIcon("music")}<span>Home</span></button>
+          <button type="button">${svgIcon("search")}<span>Search</span></button>
+          <button type="button">${svgIcon("radio")}<span>Library</span></button>
+          <button type="button">${svgIcon("profile")}<span>Profile</span></button>
         </nav>
-        <div class="pleos-media-list" aria-live="polite">
-          ${renderPleosMediaRows(results, selected, fallback)}
-        </div>
-        <aside class="pleos-media-index" aria-hidden="true">
-          <span>A</span><i></i><span>E</span><i></i><span>I</span><i></i><span>M</span><i></i><span>Q</span><i></i><span>U</span><i></i><span>Z</span>
+        <main class="spotify-browse-panel">
+          <div class="spotify-chip-row" aria-hidden="true">
+            <span class="active">Music</span>
+            <span>Podcasts</span>
+            <span>Downloaded</span>
+          </div>
+          <div class="spotify-section-heading">
+            <strong>${mediaSearchQuery ? "Search results" : "Recommended for this drive"}</strong>
+            <span>${results.length ? `${results.length} tracks` : "Enter a keyword"}</span>
+          </div>
+          <div class="spotify-results-list" aria-live="polite">
+            ${renderSpotifyTabletRows(results, selectedItem, fallback)}
+          </div>
+        </main>
+        <aside class="spotify-now-panel">
+          <span class="spotify-now-kicker">Now Playing</span>
+          ${mediaArtwork(selectedItem, "spotify-now-art", fallback, selectedItem?.title || meta.empty)}
+          <div class="spotify-now-copy">
+            <strong>${escapeHtml(selectedItem?.title || meta.empty)}</strong>
+            <span>${escapeHtml(selectedItem?.creator || "Search Spotify")}</span>
+            <p>${escapeHtml(selectedItem?.description || "검색 결과를 선택하면 재생 상세 화면이 표시됩니다.")}</p>
+          </div>
+          <div class="spotify-progress spotify-now-progress" aria-hidden="true">
+            <span>0:42</span>
+            <div><i></i></div>
+            <span>3:24</span>
+          </div>
+          <div class="spotify-now-controls" aria-hidden="true">
+            <button type="button">‹‹</button>
+            <button type="button" class="primary">Ⅱ</button>
+            <button type="button">››</button>
+          </div>
+          <div class="spotify-device-pill" aria-hidden="true">
+            <span></span>
+            Playing on Connect-L
+          </div>
+          <div class="spotify-queue">
+            <strong>Up next</strong>
+            ${queueItems.map((item) => `
+              <button type="button" data-media-id="${escapeHtml(item.id)}">
+                ${mediaArtwork(item, "spotify-queue-art", fallback, item.title)}
+                <span><b>${escapeHtml(item.title)}</b><small>${escapeHtml(item.creator)}</small></span>
+              </button>
+            `).join("")}
+          </div>
         </aside>
-        <footer class="pleos-media-player">
-          <div class="pleos-media-progress" aria-hidden="true"><span></span></div>
-          <div class="pleos-media-controls" aria-hidden="true">
-            <button type="button" tabindex="-1">◀</button>
-            <button type="button" tabindex="-1" class="active">Ⅱ</button>
-            <button type="button" tabindex="-1">▶</button>
+      </section>
+    </section>
+  `;
+}
+
+function renderYouTubeTabletPanel(meta, results, selected, fallback) {
+  const selectedItem = selected || results[0] || null;
+  const videoRecommendations = MEDIA_CATALOG.filter((item) => item.type === "video" && !results.some((result) => result.id === item.id));
+  const relatedItems = [...results, ...videoRecommendations].slice(0, 8);
+
+  return `
+    <section class="media-app-panel youtube-media-app youtube-tablet-app" aria-label="${meta.title}">
+      <div class="landscape-drag-handle" aria-hidden="true"></div>
+      <header class="media-tablet-topbar youtube-topbar">
+        <span class="youtube-brand-icon media-tablet-logo" aria-hidden="true">${svgIcon("youtube")}</span>
+        <form class="media-search-form media-tablet-search" id="mediaSearchForm">
+          <input id="mediaSearchInput" type="search" value="${escapeHtml(mediaSearchQuery)}" placeholder="${meta.placeholder}" autocomplete="off" />
+          <button type="button" id="mediaSearchButton" aria-label="검색">${svgIcon("search")}</button>
+        </form>
+      </header>
+      <section class="youtube-tablet-shell">
+        <nav class="youtube-tablet-rail" aria-label="YouTube navigation">
+          <button type="button" class="active">${svgIcon("home")}<span>Home</span></button>
+          <button type="button">${svgIcon("youtube")}<span>Shorts</span></button>
+          <button type="button">${svgIcon("radio")}<span>Subscriptions</span></button>
+          <button type="button">${svgIcon("profile")}<span>You</span></button>
+        </nav>
+        <main class="youtube-watch-panel">
+          <section class="youtube-player-card">
+            ${mediaArtwork(selectedItem, "youtube-player-thumb", fallback, selectedItem?.title || meta.empty)}
+            <div class="youtube-player-overlay" aria-hidden="true">
+              <button type="button">${svgIcon("play")}</button>
+              <div><i></i></div>
+              <span>0:00 / 12:48</span>
+            </div>
+          </section>
+          <section class="youtube-video-meta">
+            <h2>${escapeHtml(selectedItem?.title || meta.empty)}</h2>
+            <div class="youtube-channel-row">
+              <span class="youtube-channel-avatar">${escapeHtml((selectedItem?.creator || "Y").charAt(0))}</span>
+              <span><strong>${escapeHtml(selectedItem?.creator || "YouTube")}</strong><small>128만 구독자</small></span>
+              <button type="button">구독</button>
+            </div>
+            <div class="youtube-action-row" aria-hidden="true">
+              <span>좋아요 2.4만</span>
+              <span>공유</span>
+              <span>저장</span>
+              <span>오프라인</span>
+            </div>
+            <p>${escapeHtml(selectedItem?.description || "검색 결과를 선택하면 영상 상세 화면이 표시됩니다.")}</p>
+          </section>
+        </main>
+        <aside class="youtube-related-panel">
+          <div class="youtube-filter-row" aria-hidden="true">
+            <span class="active">All</span><span>Music</span><span>Recently uploaded</span>
           </div>
-          <div class="pleos-media-player-copy">
-            <strong>${escapeHtml(playerTitle)}</strong>
-            <span>${escapeHtml(playerSubtitle)}</span>
+          <div class="youtube-related-list" aria-live="polite">
+            ${mediaSearchLoading ? `<div class="media-empty">검색 중...</div>` : ""}
+            ${mediaSearchError ? `<div class="media-empty">${escapeHtml(mediaSearchError)}</div>` : ""}
+            ${!mediaSearchLoading && !mediaSearchError && relatedItems.map((item) => `
+              <button class="youtube-related-item${selectedItem?.id === item.id ? " selected" : ""}" type="button" data-media-id="${escapeHtml(item.id)}">
+                ${mediaArtwork(item, "youtube-related-thumb", fallback, item.title)}
+                <span>
+                  <strong>${escapeHtml(item.title)}</strong>
+                  <small>${escapeHtml(item.creator)} · 조회수 ${Math.max(12, item.title.length * 3)}만회</small>
+                </span>
+              </button>
+            `).join("")}
+            ${!mediaSearchLoading && !mediaSearchError && !relatedItems.length ? `<div class="media-empty">${meta.empty}</div>` : ""}
           </div>
-          <button class="media-play-button pleos-media-note" type="button" aria-label="재생">${svgIcon("music")}</button>
-        </footer>
+        </aside>
       </section>
     </section>
   `;
@@ -783,9 +935,14 @@ async function fetchExternalMediaResults() {
       throw new Error("검색 서비스를 사용할 수 없습니다.");
     }
     if (!response.ok) throw new Error(payload.message || "검색에 실패했습니다.");
-    mediaSearchResults = Array.isArray(payload.items) ? payload.items : [];
+    if (payload.ok === false) throw new Error(payload.message || "검색에 실패했습니다.");
+    const externalResults = Array.isArray(payload.items) ? payload.items : [];
+    mediaSearchResults = externalResults.length
+      ? externalResults
+      : searchMediaCatalogWithFallback(MEDIA_CATALOG, query, meta.type);
+    mediaSearchError = mediaSearchResults.length ? "" : "검색 결과가 없습니다.";
   } catch (error) {
-    const fallbackResults = searchMediaCatalog(MEDIA_CATALOG, query, meta.type);
+    const fallbackResults = searchMediaCatalogWithFallback(MEDIA_CATALOG, query, meta.type);
     mediaSearchResults = fallbackResults;
     mediaSearchError = fallbackResults.length ? "" : (error.message || "검색에 실패했습니다.");
   } finally {
@@ -800,6 +957,149 @@ function mediaAppHost() {
   return activeMediaHost === "landscape" ? shortcutGrid : appsLayer;
 }
 
+function restoreDefaultSettingsRoot() {
+  settingsNav = defaultSettingsNav;
+  settingsDetail = defaultSettingsDetail;
+}
+
+function closeLandscapeApp({ renderHomeScreen = true } = {}) {
+  restoreDefaultSettingsRoot();
+  activeMediaApp = null;
+  activeMediaHost = "apps";
+  mediaSearchQuery = "";
+  selectedMediaId = null;
+  mediaSearchResults = null;
+  mediaSearchLoading = false;
+  mediaSearchError = "";
+  shortcutGrid.classList.remove("media-landscape-host");
+  appsLayer.classList.remove("media-app-open");
+  appsLayer.hidden = true;
+  vehicleSettingsLayer.hidden = true;
+  workspace.hidden = false;
+  shortcutGrid.innerHTML = "";
+  setActiveSurface("home");
+  if (renderHomeScreen) renderHome();
+}
+
+function bindLandscapeDragToClose(container) {
+  if (!container || container.dataset.landscapeDragBound === "true") return;
+  const handle = container.querySelector(".landscape-drag-handle, .radio-drag-handle, .phone-drag-handle");
+  if (!handle) return;
+  handle.classList.add("landscape-drag-handle");
+  container.dataset.landscapeDragBound = "true";
+
+  let isDragging = false;
+  let startY = 0;
+  let currentY = 0;
+  let activeInput = "";
+  const closeThreshold = 120;
+
+  const startDrag = (clientY, inputType) => {
+    if (isDragging) return;
+    isDragging = true;
+    activeInput = inputType;
+    startY = clientY;
+    currentY = 0;
+    container.style.transition = "none";
+  };
+
+  const moveDrag = (clientY) => {
+    if (!isDragging) return;
+    currentY = Math.max(0, clientY - startY);
+    container.style.transform = `translateY(${currentY}px)`;
+    container.style.opacity = String(Math.max(0.35, 1 - currentY / 360));
+  };
+
+  const finishDrag = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    activeInput = "";
+    container.style.transition = "transform 220ms ease, opacity 220ms ease";
+
+    if (currentY > closeThreshold) {
+      container.style.transform = "translateY(100%)";
+      container.style.opacity = "0";
+      window.setTimeout(() => closeLandscapeApp(), 220);
+    } else {
+      container.style.transform = "translateY(0)";
+      container.style.opacity = "1";
+      window.setTimeout(() => {
+        container.style.transition = "";
+        container.style.transform = "";
+        container.style.opacity = "";
+      }, 240);
+    }
+    currentY = 0;
+  };
+
+  const cancelDrag = () => {
+    isDragging = false;
+    activeInput = "";
+    currentY = 0;
+    container.style.transition = "";
+    container.style.transform = "";
+    container.style.opacity = "";
+  };
+
+  handle.addEventListener("pointerdown", (event) => {
+    startDrag(event.clientY, "pointer");
+    try {
+      handle.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture is best-effort across browser automation surfaces.
+    }
+  });
+
+  handle.addEventListener("pointermove", (event) => {
+    if (activeInput !== "pointer") return;
+    moveDrag(event.clientY);
+  });
+
+  handle.addEventListener("pointerup", (event) => {
+    if (activeInput !== "pointer") return;
+    try {
+      handle.releasePointerCapture(event.pointerId);
+    } catch {
+      // Some browser surfaces release capture automatically.
+    }
+    finishDrag();
+  });
+
+  handle.addEventListener("pointercancel", cancelDrag);
+
+  handle.addEventListener("mousedown", (event) => {
+    if (event.button !== 0 || isDragging) return;
+    event.preventDefault();
+    startDrag(event.clientY, "mouse");
+    const onMouseMove = (moveEvent) => moveDrag(moveEvent.clientY);
+    const onMouseUp = () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      finishDrag();
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp, { once: true });
+  });
+
+  handle.addEventListener("touchstart", (event) => {
+    if (isDragging) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    event.preventDefault();
+    startDrag(touch.clientY, "touch");
+  }, { passive: false });
+
+  handle.addEventListener("touchmove", (event) => {
+    if (activeInput !== "touch") return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    event.preventDefault();
+    moveDrag(touch.clientY);
+  }, { passive: false });
+
+  handle.addEventListener("touchend", finishDrag);
+  handle.addEventListener("touchcancel", cancelDrag);
+}
+
 function resetMediaAppState() {
   activeMediaApp = null;
   activeMediaHost = "apps";
@@ -812,7 +1112,21 @@ function resetMediaAppState() {
   appsLayer.classList.remove("media-app-open");
 }
 
+function prepareLandscapeAppLaunch() {
+  closeAllStatusOverlays();
+  restoreDefaultSettingsRoot();
+  appsLayer.hidden = true;
+  appsLayer.classList.remove("media-app-open");
+  vehicleSettingsLayer.hidden = true;
+  workspace.hidden = false;
+  setActiveSurface("home");
+  shortcutGrid.innerHTML = "";
+  shortcutGrid.classList.add("media-landscape-host");
+  activeMediaHost = "landscape";
+}
+
 function openLandscapeMediaApp(id) {
+  prepareLandscapeAppLaunch();
   activeMediaHost = "landscape";
   activeMediaApp = id;
   mediaSearchQuery = "";
@@ -820,7 +1134,6 @@ function openLandscapeMediaApp(id) {
   mediaSearchResults = null;
   mediaSearchLoading = false;
   mediaSearchError = "";
-  setActiveSurface("home");
   renderMediaApp();
 }
 
@@ -845,9 +1158,9 @@ function getStationInfo(freq) {
 }
 
 function openRadioApp() {
+  prepareLandscapeAppLaunch();
   activeMediaApp = "radio";
   activeMediaHost = "landscape";
-  setActiveSurface("home");
   renderRadioApp();
 }
 
@@ -864,19 +1177,25 @@ function renderRadioApp() {
 
   host.innerHTML = `
     <div class="sample-radio-app">
+      <div class="radio-drag-handle" id="radioDragHandle" aria-hidden="true"></div>
       <!-- L1: Header -->
       <header class="ivi_header">
         <div class="title_group">
-          <button class="media-app-back" type="button" data-close-media-app aria-label="돌아가기" style="background:transparent; border:none; font-size:24px; cursor:pointer; color:#131417; margin-right:8px;">‹</button>
-          <div class="radio-sources-badge"></div>
+          <div class="radio-sources-badge">
+            ${svgIcon("radio")}
+          </div>
           <button class="primary_button" type="button">
             <span class="btn-title">Radio</span>
-            <span class="chevron-d"></span>
+            <svg class="chevron-d" viewBox="0 0 24 24">
+              <path d="M7 10l5 5 5-5H7z"/>
+            </svg>
           </button>
           <div class="header-divider"></div>
           <button class="secondary_button" type="button">
             <span class="btn-title">FM</span>
-            <span class="chevron-d"></span>
+            <svg class="chevron-d" viewBox="0 0 24 24">
+              <path d="M7 10l5 5 5-5H7z"/>
+            </svg>
           </button>
           <div class="header-divider"></div>
           <div class="segmented_control_line">
@@ -891,21 +1210,34 @@ function renderRadioApp() {
             </button>
           </div>
         </div>
-        <button class="header-more-btn" type="button"></button>
+        <button class="header-more-btn" type="button">
+          <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#131417" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="5" cy="12" r="1.5"/>
+            <circle cx="12" cy="12" r="1.5"/>
+            <circle cx="19" cy="12" r="1.5"/>
+          </svg>
+        </button>
       </header>
 
       <!-- L2: Body (Manual Tuning) -->
       <main class="manual_tuning">
         <div class="channel_control">
-          <button class="tune-arrow-btn" id="tunePrevBtn" type="button">
-            <svg viewBox="0 0 24 24" width="23" height="23"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+          <button class="tune-arrow-btn" id="tunePrevBtn" type="button" aria-label="이전 주파수">
+            <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#131417" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
           </button>
           <div class="tuning-text-group">
             <h1 class="tuning-frequency">FM ${freqStr}</h1>
-            <p class="tuning-station-info">${info.name} · ${info.song}</p>
+            <div class="tuning-station-info">
+              <div class="tuning-station-name">${info.name}</div>
+              <div class="tuning-station-song">${info.song}</div>
+            </div>
           </div>
-          <button class="tune-arrow-btn" id="tuneNextBtn" type="button">
-            <svg viewBox="0 0 24 24" width="23" height="23"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+          <button class="tune-arrow-btn" id="tuneNextBtn" type="button" aria-label="다음 주파수">
+            <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#131417" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
           </button>
         </div>
 
@@ -918,26 +1250,36 @@ function renderRadioApp() {
               <div class="frequency-numbers-row" id="freqNumbersRow"></div>
             </div>
           </div>
+          <div class="frequency-purple-glow"></div>
+          <!-- Fixed center indicator line -->
+          <div class="frequency-center-indicator"></div>
         </div>
       </main>
 
       <!-- L3: Footer -->
       <footer class="ivi_radio_control">
         <div class="radio-player-button-group">
-          <button class="radio-player-btn" id="radioPrevBtn" type="button">
-            <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+          <button class="radio-player-btn" id="radioPrevBtn" type="button" aria-label="이전 채널">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+              <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+            </svg>
           </button>
-          <button class="radio-player-btn" id="radioPlayBtn" type="button">
+          <button class="radio-player-btn play-pause-btn" id="radioPlayBtn" type="button" aria-label="재생">
             ${radioState.isPlaying ? 
-              `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>` : 
-              `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`
+              `<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1" fill="currentColor"/></svg>` : 
+              `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>`
             }
           </button>
-          <button class="radio-player-btn" id="radioNextBtn" type="button">
-            <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+          <button class="radio-player-btn" id="radioNextBtn" type="button" aria-label="다음 채널">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+              <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+            </svg>
           </button>
-          <button class="radio-player-btn${isStarred ? " active-star" : ""}" id="radioStarBtn" type="button">
-            <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          <button class="radio-player-btn star-btn${isStarred ? " active-star" : ""}" id="radioStarBtn" type="button" aria-label="즐겨찾기">
+            ${isStarred ? 
+              `<svg viewBox="0 0 24 24" width="28" height="28" fill="#FFB800" stroke="#FFB800" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 9 22 10 17 15 18 22 12 18 6 22 7 15 2 10 9 9"></polygon></svg>` : 
+              `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#9E9E9E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 9 22 10 17 15 18 22 12 18 6 22 7 15 2 10 9 9"></polygon></svg>`
+            }
           </button>
         </div>
         <div class="radio-footer-info">
@@ -946,24 +1288,58 @@ function renderRadioApp() {
             <span class="radio-footer-desc">${info.name} · ${info.song}</span>
           </div>
           <div class="radio-footer-cover">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#131417" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20V9"/>
+              <circle cx="12" cy="7.5" r="1"/>
+              <path d="M8 12a6 6 0 0 1 0-6M16 6a6 6 0 0 1 0 6M5 15a10 10 0 0 1 0-10M19 5a10 10 0 0 1 0 10"/>
+            </svg>
           </div>
         </div>
       </footer>
     </div>
   `;
 
+  // Initialize ticks and scrolling
   generateRadioTicks();
 
-  host.querySelector("[data-close-media-app]")?.addEventListener("click", () => {
-    const closingLandscape = activeMediaHost === "landscape";
-    resetMediaAppState();
-    if (closingLandscape) {
-      renderHome();
-    } else {
-      renderApps();
-    }
-  });
+  // Scroll event for real-time dial adjustment
+  const scaleOuter = host.querySelector("#freqScaleOuter");
+  let scrollTimeout;
+  if (scaleOuter) {
+    scaleOuter.addEventListener("scroll", () => {
+      if (radioState.isScrollingProgrammatically) return;
+      const newFreq = 80.0 + scaleOuter.scrollLeft / 28;
+      const clampedFreq = Math.max(87.5, Math.min(108.0, Number(newFreq.toFixed(1))));
+      if (Math.abs(radioState.frequency - clampedFreq) >= 0.1) {
+        radioState.frequency = clampedFreq;
+        
+        // Update DOM text directly to prevent lag during active drag
+        const freqText = host.querySelector(".tuning-frequency");
+        if (freqText) freqText.innerText = `FM ${clampedFreq.toFixed(1)}`;
+        
+        const footerFreq = host.querySelector(".radio-footer-freq");
+        if (footerFreq) footerFreq.innerText = `FM ${clampedFreq.toFixed(1)}`;
+        
+        const info = getStationInfo(clampedFreq);
+        const nameText = host.querySelector(".tuning-station-name");
+        if (nameText) nameText.innerText = info.name;
+        const songText = host.querySelector(".tuning-station-song");
+        if (songText) songText.innerText = info.song;
+        
+        const footerDesc = host.querySelector(".radio-footer-desc");
+        if (footerDesc) footerDesc.innerText = `${info.name} · ${info.song}`;
+        
+        // Debounce full render to update active-star and other parts
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          renderRadioApp();
+        }, 300);
+      }
+    });
+  }
+
+  const radioContainer = host.querySelector(".sample-radio-app");
+  bindLandscapeDragToClose(radioContainer);
 
   host.querySelectorAll(".line_button").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -1018,37 +1394,44 @@ function generateRadioTicks() {
 
   const startFreq = 80.0;
   const endFreq = 110.0;
-  const step = 0.1;
-
-  const totalTicks = Math.round((endFreq - startFreq) / step) + 1;
-  const currentTickIndex = Math.round((radioState.frequency - startFreq) / step);
+  const tickStep = 0.5;
+  const totalTicks = Math.round((endFreq - startFreq) / tickStep) + 1;
 
   for (let i = 0; i < totalTicks; i++) {
-    const freqVal = Number((startFreq + i * step).toFixed(1));
+    const freqVal = Number((startFreq + i * tickStep).toFixed(1));
     const tick = document.createElement("div");
     
-    if (i === currentTickIndex) {
-      tick.className = "tick-line focus";
-    } else if (Math.round(freqVal) === freqVal && Math.round(freqVal) % 5 === 0) {
-      tick.className = "tick-line high";
+    if (Math.round(freqVal) === freqVal && Math.round(freqVal) % 5 === 0) {
+      tick.className = "tick-line tall";
+    } else if (Math.round(freqVal) === freqVal) {
+      tick.className = "tick-line medium";
     } else {
-      tick.className = "tick-line";
+      tick.className = "tick-line short";
     }
+    tick.style.left = `${i * 14}px`;
     ticksRow.appendChild(tick);
 
     if (Math.round(freqVal) === freqVal && Math.round(freqVal) % 5 === 0) {
       const numLabel = document.createElement("span");
       numLabel.className = "freq-number";
+      const diff = Math.abs(radioState.frequency - freqVal);
+      if (diff < 2.5) {
+        numLabel.classList.add("active");
+      }
       numLabel.innerText = Math.round(freqVal);
-      numLabel.style.left = `${i * 18}px`;
+      numLabel.style.left = `${i * 14}px`;
       numbersRow.appendChild(numLabel);
     }
   }
 
   const scaleOuter = document.getElementById("freqScaleOuter");
   if (scaleOuter) {
-    const scrollTarget = (currentTickIndex * 18) - (scaleOuter.offsetWidth / 2) + 200;
+    radioState.isScrollingProgrammatically = true;
+    const scrollTarget = (radioState.frequency - startFreq) * 28 - (scaleOuter.offsetWidth / 2);
     scaleOuter.scrollLeft = scrollTarget;
+    setTimeout(() => {
+      radioState.isScrollingProgrammatically = false;
+    }, 50);
   }
 }
 
@@ -1059,9 +1442,9 @@ let phoneState = {
 };
 
 function openPhoneApp() {
+  prepareLandscapeAppLaunch();
   activeMediaApp = "phone";
   activeMediaHost = "landscape";
-  setActiveSurface("home");
   renderPhoneApp();
 }
 
@@ -1074,6 +1457,7 @@ function renderPhoneApp() {
 
   host.innerHTML = `
     <div class="phone-dialer-app">
+      <div class="phone-drag-handle" id="phoneDragHandle" aria-hidden="true"></div>
       <button class="media-app-back" type="button" data-close-media-app aria-label="돌아가기" style="position: absolute; left: 24px; top: 24px; background:transparent; border:none; font-size:28px; cursor:pointer; color:#131417;">‹</button>
       
       <div class="dial_title">
@@ -1106,10 +1490,11 @@ function renderPhoneApp() {
     </div>
   `;
 
+  const phoneContainer = host.querySelector(".phone-dialer-app");
+  bindLandscapeDragToClose(phoneContainer);
+
   host.querySelector("[data-close-media-app]")?.addEventListener("click", () => {
-    resetMediaAppState();
-    if (activeMediaHost === "landscape") renderHome();
-    else renderApps();
+    closeLandscapeApp();
   });
 
   host.querySelectorAll(".phone_dial_num").forEach(btn => {
@@ -1176,12 +1561,6 @@ function renderMediaApp() {
   const results = mediaResultsForActiveApp();
   const selected = results.find((item) => item.id === selectedMediaId) || results[0];
   const fallback = mediaFallbackIcon(meta);
-  const mediaAppClass = `${isSpotifyApp ? " spotify-media-app" : ""}${isYoutubeApp ? " youtube-media-app" : ""}`;
-  const brandIcon = isSpotifyApp
-    ? `<span class="spotify-brand-icon" aria-hidden="true">${svgIcon("spotify")}</span>`
-    : isYoutubeApp
-      ? `<span class="youtube-brand-icon" aria-hidden="true">${svgIcon("youtube")}</span>`
-      : "";
   const mediaSubtitle = isSpotifyApp
     ? "Search tracks, artists and albums"
     : isYoutubeApp
@@ -1228,11 +1607,15 @@ function renderMediaApp() {
       : "";
   appsLayer.classList.toggle("media-app-open", !isLandscapeHost);
   shortcutGrid.classList.toggle("media-landscape-host", isLandscapeHost);
-  host.innerHTML = isSpotifyApp ? renderPleosSpotifyPanel(meta, results, selected, fallback, mediaSubtitle) : `
-      <section class="media-app-panel${mediaAppClass}" aria-label="${meta.title}">
+  if (isSpotifyApp) {
+    host.innerHTML = renderSpotifyTabletPanel(meta, results, selected, fallback);
+  } else if (isYoutubeApp) {
+    host.innerHTML = renderYouTubeTabletPanel(meta, results, selected, fallback);
+  } else {
+    host.innerHTML = `
+      <section class="media-app-panel" aria-label="${meta.title}">
         <header class="media-app-header">
           <button class="media-app-back" type="button" data-close-media-app aria-label="${isLandscapeHost ? "홈으로 돌아가기" : "앱 목록으로 돌아가기"}">‹</button>
-          ${brandIcon}
           <div>
             <h1>${meta.title}</h1>
             <p>${mediaSubtitle}</p>
@@ -1280,24 +1663,28 @@ function renderMediaApp() {
         </section>
       </section>
     `;
+  }
+
+  if (isLandscapeHost) {
+    bindLandscapeDragToClose(host.querySelector(".media-app-panel"));
+  }
 
   host.querySelector("[data-close-media-app]")?.addEventListener("click", () => {
-    const closingLandscape = activeMediaHost === "landscape";
-    resetMediaAppState();
-    if (closingLandscape) {
-      renderHome();
-    } else {
-      renderApps();
-    }
+    closeLandscapeApp();
   });
 
   host.querySelector("#mediaSearchForm")?.addEventListener("submit", (event) => {
     event.preventDefault();
+    mediaSearchQuery = host.querySelector("#mediaSearchInput")?.value || "";
+    selectedMediaId = null;
+    mediaSearchResults = null;
+    fetchExternalMediaResults();
   });
 
   host.querySelector("#mediaSearchInput")?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
     }
   });
 
@@ -1448,6 +1835,32 @@ function renderSettingsNav() {
       activeSettingsId = button.dataset.settingsId;
       renderVehicleSettings();
     });
+  });
+}
+
+function openLandscapeSettingsApp(categoryId, options = {}) {
+  prepareLandscapeAppLaunch();
+  activeMediaApp = `settings:${categoryId}`;
+  activeMediaHost = "landscape";
+  activeSettingsId = categoryId;
+  if (options.appSettingsView) appSettingsState.view = options.appSettingsView;
+
+  shortcutGrid.innerHTML = `
+    <section class="landscape-settings-app" aria-label="Vehicle settings">
+      <div class="landscape-drag-handle" aria-hidden="true"></div>
+      <button class="media-app-back landscape-app-close" type="button" data-close-landscape-app aria-label="홈으로 돌아가기">‹</button>
+      <aside class="settings-nav landscape-settings-nav" aria-label="Vehicle setting categories"></aside>
+      <section class="settings-detail landscape-settings-detail" aria-live="polite"></section>
+    </section>
+  `;
+
+  settingsNav = shortcutGrid.querySelector(".landscape-settings-nav");
+  settingsDetail = shortcutGrid.querySelector(".landscape-settings-detail");
+  renderVehicleSettings();
+  bindLandscapeDragToClose(shortcutGrid.querySelector(".landscape-settings-app"));
+
+  shortcutGrid.querySelector("[data-close-landscape-app]")?.addEventListener("click", () => {
+    closeLandscapeApp();
   });
 }
 
@@ -3840,13 +4253,11 @@ function toggleAppsSurface() {
 }
 
 function toggleVehicleSettingsSurface() {
-  setActiveSurface(vehicleSettingsLayer.hidden ? "vehicle" : "home");
+  openLandscapeSettingsApp("quick");
 }
 
 function openHomeSurface() {
-  resetMediaAppState();
-  setActiveSurface("home");
-  renderHome();
+  closeLandscapeApp();
 }
 
 function getNaverMapKeyId() {
@@ -3954,7 +4365,7 @@ function initNaverMap() {
           position: naver.maps.Position.BOTTOM_LEFT
         },
         gl: true,
-        customStyleId: "49292681-c84f-4812-ba9b-1a70e58f582c"
+        customStyleId: "45c2abdd-a09b-4a64-a15a-9edb302e42a8"
       });
 
       // Initialize real-time traffic layer
@@ -3980,6 +4391,10 @@ function initNaverMap() {
 
       naverMapReady = true;
       setMapStatus("");
+
+      naver.maps.Event.addListener(naverMap, "dragstart", () => {
+        isCameraTracking = false;
+      });
       
       setTimeout(() => {
         refreshNaverMap();
@@ -4169,20 +4584,20 @@ function drawRouteOnMap(route, index, isSelected) {
   if (pathPoints.length < 2) return;
 
   if (isSelected) {
-    // 1. Draw outline (dark gray/black border)
+    // 1. Draw outline (dark solid border for high contrast)
     const latLngPath = pathPoints.map((p) => new naver.maps.LatLng(p.lat, p.lng));
     const outlinePoly = new naver.maps.Polyline({
       map: naverMap,
       path: latLngPath,
-      strokeColor: "#1e2024",
-      strokeWeight: 12,
-      strokeOpacity: 0.95,
+      strokeColor: "#0f172a",
+      strokeWeight: 11.0, // Increased thickness to show border clearly
+      strokeOpacity: 0.95, // High contrast border opacity
       strokeLineCap: "round",
       strokeLineJoin: "round"
     });
     routePolylinesList.push(outlinePoly);
 
-    // 2. Draw traffic colored segments on top
+    // 2. Draw traffic colored segments on top (vibrant colors)
     if (route.sections && route.sections.length > 0) {
       route.sections.forEach((sec) => {
         const startIdx = sec.pointIndex;
@@ -4191,16 +4606,16 @@ function drawRouteOnMap(route, index, isSelected) {
         const segmentPoints = pathPoints.slice(startIdx, endIdx);
         if (segmentPoints.length < 2) return;
 
-        let color = "#10b981"; // 원활 (Smooth)
-        if (sec.congestion === 2) color = "#f59e0b"; // 서행 (Slow)
-        else if (sec.congestion === 3) color = "#ef4444"; // 정체 (Congested)
+        let color = "#00c73c"; // 원활 (Vibrant Green)
+        if (sec.congestion === 2) color = "#f59e0b"; // 서행 (Vibrant Orange)
+        else if (sec.congestion === 3) color = "#ef4444"; // 정체 (Vibrant Red)
 
         const segmentPath = segmentPoints.map((p) => new naver.maps.LatLng(p.lat, p.lng));
         const colorPoly = new naver.maps.Polyline({
           map: naverMap,
           path: segmentPath,
           strokeColor: color,
-          strokeWeight: 7.5,
+          strokeWeight: 6.5,
           strokeOpacity: 1.0,
           strokeLineCap: "round",
           strokeLineJoin: "round"
@@ -4208,12 +4623,12 @@ function drawRouteOnMap(route, index, isSelected) {
         routePolylinesList.push(colorPoly);
       });
     } else {
-      // Mock segments division: Green / Yellow / Red
+      // Mock segments division: Vibrant Green / Orange / Red
       const divide1 = Math.floor(pathPoints.length * 0.6);
       const divide2 = Math.floor(pathPoints.length * 0.8);
 
       const segments = [
-        { start: 0, end: divide1, color: "#10b981" },
+        { start: 0, end: divide1, color: "#00c73c" },
         { start: Math.max(0, divide1 - 1), end: divide2, color: "#f59e0b" },
         { start: Math.max(0, divide2 - 1), end: pathPoints.length, color: "#ef4444" }
       ];
@@ -4227,7 +4642,7 @@ function drawRouteOnMap(route, index, isSelected) {
           map: naverMap,
           path: segmentPath,
           strokeColor: seg.color,
-          strokeWeight: 7.5,
+          strokeWeight: 6.5,
           strokeOpacity: 1.0,
           strokeLineCap: "round",
           strokeLineJoin: "round"
@@ -4288,7 +4703,8 @@ function drawRouteOnMap(route, index, isSelected) {
 function drawChevronsOnPath(pathPoints) {
   if (pathPoints.length < 5) return;
 
-  const step = Math.max(10, Math.floor(pathPoints.length / 8));
+  // Arrow density increased: draw about 20-25 arrows along the path
+  const step = Math.max(6, Math.floor(pathPoints.length / 22));
   for (let i = step; i < pathPoints.length - 5; i += step) {
     const p1 = pathPoints[i];
     const p2 = pathPoints[i + 2] || pathPoints[i + 1];
@@ -4296,22 +4712,22 @@ function drawChevronsOnPath(pathPoints) {
 
     const angle = calculateBearing(p1, p2);
 
-    // Chevron SVG icon pointing upward (oriented to 0 degrees)
-    const chevronSvg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12">
-        <path d="M2 8 L6 4 L10 8" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    `;
-
+    // Chevron SVG rotated in the direction of the path flow using HTML marker content
+    // and styled with a dark outline for high contrast readability
     const marker = new naver.maps.Marker({
       position: new naver.maps.LatLng(p1.lat, p1.lng),
       map: naverMap,
       icon: {
-        url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(chevronSvg)}`,
-        size: new naver.maps.Size(12, 12),
-        anchor: new naver.maps.Point(6, 6)
-      },
-      angle: angle // Rotate the marker icon
+        content: `
+          <div style="transform: rotate(${angle}deg); width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; transform-origin: center center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 12 12" style="display: block;">
+              <path d="M2 9 L6 4 L10 9" fill="none" stroke="#000000" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.65"/>
+              <path d="M2 9 L6 4 L10 9" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        `,
+        anchor: new naver.maps.Point(7, 7)
+      }
     });
 
     // Make the arrow markers unclickable
@@ -4362,7 +4778,7 @@ function renderRouteOptions(routes) {
           <span class="route-opt-time">${route.durationText}</span>
           <span class="route-opt-eta">${etaTextKo}</span>
           <span class="route-opt-meta">${route.distanceText}</span>
-          <span class="route-opt-meta">₩${(route.taxiFare || 0).toLocaleString("ko-KR")}</span>
+          <span class="route-opt-meta route-opt-fare">₩${(route.taxiFare || 0).toLocaleString("ko-KR")}</span>
           <span class="route-opt-battery">
             <svg class="battery-icon" viewBox="0 0 24 24" aria-hidden="true" style="vertical-align: middle; width: 16px; height: 10px;">
               <rect x="2" y="6" width="16" height="12" rx="2" stroke="currentColor" fill="none" stroke-width="2"/>
@@ -4440,6 +4856,9 @@ function startNavigation() {
   // Clear unselected route lines and bubbles from map
   redrawRoutesForNavigation();
 
+  // Update HUD and ETA bar immediately before starting the interval
+  updateNavigationSimulation();
+
   // Start tick simulation
   navSimState.intervalId = window.setInterval(updateNavigationSimulation, 1000);
   navSimState.vehicleMoveIntervalId = window.setInterval(moveVehicleMarkerSimulation, 250);
@@ -4498,6 +4917,33 @@ function redrawRoutesForNavigation() {
   }
 }
 
+function getTurnArrowSvg(type) {
+  const svgStyle = `width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"`;
+  switch (type) {
+    case 1: // 직진
+      return `<svg ${svgStyle}><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
+    case 2: // 좌회전
+    case 7: // 좌측 도로
+    case 14:
+      return `<svg ${svgStyle}><path d="M19 19h-6a4 4 0 0 1-4-4V5"></path><polyline points="5 9 9 5 13 9"></polyline></svg>`;
+    case 3: // 우회전
+    case 8: // 우측 도로
+    case 15:
+      return `<svg ${svgStyle}><path d="M5 19h6a4 4 0 0 0 4-4V5"></path><polyline points="11 9 15 5 19 9"></polyline></svg>`;
+    case 4: // 완만한 좌회전
+      return `<svg ${svgStyle}><path d="M17 19c-3.5-1.5-6-4.5-7-8l-2-6"></path><polyline points="4 8 8 5 11 9"></polyline></svg>`;
+    case 5: // 완만한 우회전
+      return `<svg ${svgStyle}><path d="M7 19c3.5-1.5 6-4.5 7-8l2-6"></path><polyline points="13 9 16 5 20 8"></polyline></svg>`;
+    case 6: // 유턴
+      return `<svg ${svgStyle}><path d="M8 19V9a4 4 0 0 1 8 0v10"></path><polyline points="12 15 8 19 4 15"></polyline></svg>`;
+    case 24: // 목적지
+      return `<svg ${svgStyle}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
+    default:
+      // 기본 직진 화살표
+      return `<svg ${svgStyle}><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
+  }
+}
+
 function updateNavigationSimulation() {
   const route = navState.currentRoute;
   if (!route) return;
@@ -4531,6 +4977,10 @@ function updateNavigationSimulation() {
     const currentGuide = route.guides[navSimState.guideIndex];
     if (currentGuide) {
       navHudRoad.textContent = currentGuide.name;
+
+      if (navHudArrow) {
+        navHudArrow.innerHTML = getTurnArrowSvg(currentGuide.type);
+      }
 
       // Interpolate remaining guide distance
       const guideDistanceFraction = Math.max(0, Math.round(currentGuide.distance * (1 - progressRatio * 2)));
@@ -4571,7 +5021,9 @@ function moveVehicleMarkerSimulation() {
     if (pCurrent && naverMapReady && vehicleMarker) {
       const position = new naver.maps.LatLng(pCurrent.lat, pCurrent.lng);
       vehicleMarker.setPosition(position);
-      naverMap.panTo(position);
+      if (isCameraTracking) {
+        naverMap.panTo(position);
+      }
 
       // Rotate vehicle heading
       if (pNext !== pCurrent) {
@@ -4909,6 +5361,7 @@ function clearNavResultMarkers() {
 
 function panToCurrentPosition() {
   if (!naverMapReady) return;
+  isCameraTracking = true;
   const center = new naver.maps.LatLng(currentPosition.lat, currentPosition.lng);
   naverMap.panTo(center);
   naverMap.setZoom(naverMapConfig.zoom);
@@ -4986,79 +5439,89 @@ function cancelLongPress() {
 }
 
 function launchAppOrWidget(id) {
+  const settingsCategoryMap = {
+    settings: "quick",
+    vehicle: "quick",
+    climate: "climate-settings",
+    seat: "seat-position",
+    energy: "charging",
+    charging: "charging",
+    ambience: "lights",
+    "tire-pressure": "vehicle-info",
+    "trip-meter": "vehicle-info",
+    dashcam: "security",
+    blackbox: "security",
+    "parking-camera": "security",
+    "journey-log": "general",
+    "apps-settings": "apps-settings",
+    bluetooth: "connection",
+    carplay: "connection",
+    mirroring: "connection"
+  };
+
   if (id === "spotify" || id === "youtube") {
     rememberRecentApp(id);
     openLandscapeMediaApp(id);
-  } else if (id === "radio") {
+    return;
+  }
+
+  if (id === "radio") {
     rememberRecentApp(id);
     openRadioApp();
-  } else if (id === "call" || id === "phone") {
+    return;
+  }
+
+  if (id === "call" || id === "phone") {
     rememberRecentApp(id);
     openPhoneApp();
-  } else if (id === "music" || id === "media-player" || id === "app-market") {
+    return;
+  }
+
+  if (id === "music" || id === "media-player" || id === "app-market") {
     const title = functionById(id).title;
     alert(`${title} 앱은 현재 데모 모드로 실행할 수 없습니다.`);
-  } else if (id === "navigation" || id === "google-maps" || id === "nav-home") {
+    return;
+  }
+
+  if (id === "navigation" || id === "google-maps" || id === "nav-home") {
     rememberRecentApp(id);
     openHomeSurface();
     openNavSearch();
-  } else if (id === "android-auto") {
-    rememberRecentApp(id);
-    activeSettingsId = "apps-settings";
-    appSettingsState.view = "android-auto";
-    setActiveSurface("vehicle");
-    renderVehicleSettings();
-  } else if (id === "driving") {
-    rememberRecentApp(id);
-    activeSettingsId = "assist";
-    setActiveSurface("vehicle");
-    renderVehicleSettings();
-  } else {
-    const settingsCategoryMap = {
-      settings: "quick",
-      vehicle: "quick",
-      climate: "climate-settings",
-      seat: "seat-position",
-      energy: "charging",
-      charging: "charging",
-      ambience: "lights",
-      "tire-pressure": "vehicle-info",
-      "trip-meter": "vehicle-info",
-      dashcam: "security",
-      blackbox: "security",
-      "parking-camera": "security",
-      "journey-log": "general",
-      "apps-settings": "apps-settings",
-      bluetooth: "connection",
-      carplay: "connection",
-      mirroring: "connection"
-    };
-
-    if (id === "gleo-ai") {
-      rememberRecentApp(id);
-      activeSettingsId = "gleo-ai";
-      setActiveSurface("vehicle");
-      renderVehicleSettings();
-      return;
-    }
-    if (id === "favorite-shortcuts" || id === "favorite-apps") {
-      activeSettingsId = "convenience";
-      setActiveSurface("vehicle");
-      renderVehicleSettings();
-      return;
-    }
-
-    const targetSettingsCategory = settingsCategoryMap[id];
-    if (targetSettingsCategory) {
-      rememberRecentApp(id);
-      activeSettingsId = targetSettingsCategory;
-      setActiveSurface("vehicle");
-      renderVehicleSettings();
-    } else {
-      const title = functionById(id).title;
-      alert(`${title} 앱은 현재 데모 모드로 실행할 수 없습니다.`);
-    }
+    return;
   }
+
+  if (id === "android-auto") {
+    rememberRecentApp(id);
+    openLandscapeSettingsApp("apps-settings", { appSettingsView: "android-auto" });
+    return;
+  }
+
+  if (id === "driving") {
+    rememberRecentApp(id);
+    openLandscapeSettingsApp("assist");
+    return;
+  }
+
+  if (id === "gleo-ai") {
+    rememberRecentApp(id);
+    openLandscapeSettingsApp("gleo-ai");
+    return;
+  }
+
+  if (id === "favorite-shortcuts" || id === "favorite-apps") {
+    openLandscapeSettingsApp("convenience");
+    return;
+  }
+
+  const targetSettingsCategory = settingsCategoryMap[id];
+  if (targetSettingsCategory) {
+    rememberRecentApp(id);
+    openLandscapeSettingsApp(targetSettingsCategory);
+    return;
+  }
+
+  const title = functionById(id).title;
+  alert(`${title} 앱은 현재 데모 모드로 실행할 수 없습니다.`);
 }
 
 function handleCardClick(event) {
@@ -5163,12 +5626,35 @@ function openEditor() {
   document.querySelector(".screen").classList.add("is-editing");
 }
 
-function setMode(mode) {
+let modeToastTimer = null;
+
+function showModeToast(mode) {
+  if (!modeToast) return;
+  modeToast.textContent = mode === "auto"
+    ? "자율 주행 홈 화면으로 변경되었습니다"
+    : "수동 운전 홈 화면으로 변경되었습니다";
+  modeToast.hidden = false;
+  modeToast.classList.add("show");
+  window.clearTimeout(modeToastTimer);
+  modeToastTimer = window.setTimeout(() => {
+    modeToast.classList.remove("show");
+    window.setTimeout(() => {
+      if (!modeToast.classList.contains("show")) modeToast.hidden = true;
+    }, 200);
+  }, 3000);
+}
+
+function setMode(mode, options = {}) {
   if (!editLayer.hidden) return;
+  const shouldAnnounce = Boolean(options.announce);
+  if (activeMediaHost === "landscape" || !vehicleSettingsLayer.hidden || !appsLayer.hidden) {
+    closeLandscapeApp({ renderHomeScreen: false });
+  }
   activeMode = mode;
   currentDestinationLabel = MODE_META[mode].destination;
   modeTabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.mode === mode));
   renderHome();
+  if (shouldAnnounce) showModeToast(mode);
 }
 
 function setMapWidth(value) {
@@ -5234,7 +5720,7 @@ function updateClock() {
 }
 
 modeTabs.forEach((tab) => {
-  tab.addEventListener("click", () => setMode(tab.dataset.mode));
+  tab.addEventListener("click", () => setMode(tab.dataset.mode, { announce: true }));
 });
 
 dockHome?.addEventListener("click", openHomeSurface);
@@ -5732,9 +6218,7 @@ volumeCardIncBtn?.addEventListener("click", () => {
 
 volumeCardSettingsBtn?.addEventListener("click", () => {
   closeAllStatusOverlays();
-  activeSettingsId = "sound";
-  setActiveSurface("vehicle");
-  renderVehicleSettings();
+  openLandscapeSettingsApp("sound");
 });
 
 // 2. 프로필 오버레이 인터랙션
@@ -5759,9 +6243,7 @@ profileValetBtn?.addEventListener("click", () => {
 
 profileSettingsBtn?.addEventListener("click", () => {
   closeAllStatusOverlays();
-  activeSettingsId = "profile";
-  setActiveSurface("vehicle");
-  renderVehicleSettings();
+  openLandscapeSettingsApp("profile");
 });
 
 // 3. 알림 오버레이 인터랙션
@@ -5773,16 +6255,12 @@ statusBarNotificationBtn?.addEventListener("click", (e) => {
 // Bluetooth / Wifi 클릭 인터랙션
 statusBarBluetoothBtn?.addEventListener("click", () => {
   closeAllStatusOverlays();
-  activeSettingsId = "connection";
-  setActiveSurface("vehicle");
-  renderVehicleSettings();
+  openLandscapeSettingsApp("connection");
 });
 
 statusBarWifiBtn?.addEventListener("click", () => {
   closeAllStatusOverlays();
-  activeSettingsId = "connection";
-  setActiveSurface("vehicle");
-  renderVehicleSettings();
+  openLandscapeSettingsApp("connection");
 });
 
 // 4. 검색 인터랙션
@@ -5816,4 +6294,106 @@ document.addEventListener("click", (e) => {
       !e.target.closest("#statusBarNotificationBtn")) {
     closeAllStatusOverlays();
   }
+
+  // GNB 앱 목록(런처) 외부 터치 시 닫기
+  const isLauncherVisible = !appsLayer.hidden && !appsLayer.classList.contains("media-app-open");
+  if (isLauncherVisible && !appsLayer.contains(e.target) && !e.target.closest('[data-dock-action="apps"]')) {
+    setActiveSurface("home");
+  }
 });
+
+// GNB 앱 목록(런처) 및 차량 설정 화면 드래그 다운으로 닫기 (Swipe-down to Close)
+let isDraggingApps = false;
+let startY = 0;
+let currentY = 0;
+const dragThreshold = 120; // 120px 이상 아래로 내리면 닫힘
+
+const appsDragHandle = document.querySelector("#appsDragHandle");
+
+if (appsDragHandle && appsLayer) {
+  appsDragHandle.addEventListener("pointerdown", (e) => {
+    isDraggingApps = true;
+    startY = e.clientY;
+    appsDragHandle.setPointerCapture(e.pointerId);
+    appsLayer.style.transition = "none";
+  });
+
+  appsDragHandle.addEventListener("pointermove", (e) => {
+    if (!isDraggingApps) return;
+    currentY = e.clientY - startY;
+    if (currentY < 0) currentY = 0;
+    appsLayer.style.transform = `translate(-50%, calc(-50% + ${currentY}px))`;
+  });
+
+  appsDragHandle.addEventListener("pointerup", (e) => {
+    if (!isDraggingApps) return;
+    isDraggingApps = false;
+    appsDragHandle.releasePointerCapture(e.pointerId);
+
+    appsLayer.style.transition = "transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease";
+
+    if (currentY > dragThreshold) {
+      appsLayer.style.transform = "translate(-50%, 100%)";
+      appsLayer.style.opacity = "0";
+      setTimeout(() => {
+        setActiveSurface("home");
+        appsLayer.style.transform = "";
+        appsLayer.style.opacity = "";
+        appsLayer.style.transition = "";
+      }, 300);
+    } else {
+      appsLayer.style.transform = "translate(-50%, -50%)";
+      setTimeout(() => {
+        appsLayer.style.transition = "";
+      }, 300);
+    }
+    currentY = 0;
+  });
+}
+
+let isDraggingSettings = false;
+let startSettingsY = 0;
+let currentSettingsY = 0;
+
+const settingsDragHandle = document.querySelector("#settingsDragHandle");
+
+if (settingsDragHandle && vehicleSettingsLayer) {
+  settingsDragHandle.addEventListener("pointerdown", (e) => {
+    isDraggingSettings = true;
+    startSettingsY = e.clientY;
+    settingsDragHandle.setPointerCapture(e.pointerId);
+    vehicleSettingsLayer.style.transition = "none";
+  });
+
+  settingsDragHandle.addEventListener("pointermove", (e) => {
+    if (!isDraggingSettings) return;
+    currentSettingsY = e.clientY - startSettingsY;
+    if (currentSettingsY < 0) currentSettingsY = 0;
+    vehicleSettingsLayer.style.transform = `translateY(${currentSettingsY}px)`;
+  });
+
+  settingsDragHandle.addEventListener("pointerup", (e) => {
+    if (!isDraggingSettings) return;
+    isDraggingSettings = false;
+    settingsDragHandle.releasePointerCapture(e.pointerId);
+
+    vehicleSettingsLayer.style.transition = "transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease";
+
+    if (currentSettingsY > dragThreshold) {
+      vehicleSettingsLayer.style.transform = "translateY(100%)";
+      vehicleSettingsLayer.style.opacity = "0";
+      setTimeout(() => {
+        setActiveSurface("home");
+        vehicleSettingsLayer.style.transform = "";
+        vehicleSettingsLayer.style.opacity = "";
+        vehicleSettingsLayer.style.transition = "";
+      }, 300);
+    } else {
+      vehicleSettingsLayer.style.transform = "translateY(0)";
+      setTimeout(() => {
+        vehicleSettingsLayer.style.transition = "";
+      }, 300);
+    }
+    currentSettingsY = 0;
+  });
+}

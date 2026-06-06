@@ -222,9 +222,7 @@ export const ALL_APPS = APP_REGISTRY
     return { title: meta.title, icon: meta.icon, color: meta.color, appId: meta.appId };
   });
 
-export const EDIT_APPS = APP_REGISTRY
-  .filter((app) => app.surfaces?.edit)
-  .map((app) => app.id);
+export const EDIT_APPS = ALL_APPS.map((app) => app.appId);
 
 export const MEDIA_APP_META = Object.fromEntries(
   APP_REGISTRY

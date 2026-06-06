@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { searchMediaCatalog } from "../media-search-utils.js";
+import { searchMediaCatalog, searchMediaCatalogWithFallback } from "../media-search-utils.js";
 
 const catalog = [
   { type: "music", title: "Ditto", creator: "NewJeans", description: "K-pop playlist" },
@@ -23,5 +23,11 @@ test("returns featured results for an empty query", () => {
   assert.deepEqual(searchMediaCatalog(catalog, "", "music"), [
     { type: "music", title: "Ditto", creator: "NewJeans", description: "K-pop playlist" },
     { type: "music", title: "Drive Mix", creator: "Elysia Biro", description: "Electronic focus" }
+  ]);
+});
+
+test("falls back to featured results when external media search is unavailable and no local item matches", () => {
+  assert.deepEqual(searchMediaCatalogWithFallback(catalog, "unmatched query", "video"), [
+    { type: "video", title: "Seoul night drive", creator: "Drive Lab", description: "4K city route" }
   ]);
 });

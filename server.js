@@ -53,21 +53,27 @@ const naverMapsApiKeyId = process.env.NAVER_MAPS_API_KEY_ID || process.env.NCP_A
 const naverMapsApiKey = process.env.NAVER_MAPS_API_KEY || process.env.NCP_API_KEY || "";
 const naverSearchClientId = process.env.NAVER_SEARCH_CLIENT_ID || "";
 const naverSearchClientSecret = process.env.NAVER_SEARCH_CLIENT_SECRET || "";
-const youtubeApiKey = process.env.YOUTUBE_API_KEY || process.env.YOUTUBE_DATA_API_KEY || "";
+let youtubeApiKey = process.env.YOUTUBE_API_KEY || process.env.YOUTUBE_DATA_API_KEY || "";
 let spotifyClientId = process.env.SPOTIFY_CLIENT_ID || "";
 let spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET || "";
 
 let spotifyAccessToken = "";
 let spotifyTokenExpiresAt = 0;
 
-async function refreshSpotifyCredentials() {
+async function refreshMediaCredentials() {
+  const previousYouTubeApiKey = youtubeApiKey;
   const previousClientId = spotifyClientId;
   const previousClientSecret = spotifyClientSecret;
   await loadEnvFile(join(root, ".env"), { override: true });
+  youtubeApiKey = process.env.YOUTUBE_API_KEY || process.env.YOUTUBE_DATA_API_KEY || "";
   spotifyClientId = process.env.SPOTIFY_CLIENT_ID || "";
   spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET || "";
 
-  if (spotifyClientId !== previousClientId || spotifyClientSecret !== previousClientSecret) {
+  if (
+    youtubeApiKey !== previousYouTubeApiKey ||
+    spotifyClientId !== previousClientId ||
+    spotifyClientSecret !== previousClientSecret
+  ) {
     spotifyAccessToken = "";
     spotifyTokenExpiresAt = 0;
   }
@@ -85,6 +91,39 @@ const mimeTypes = {
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(payload));
+}
+
+function sendMediaSearchFailure(response, error, message, details = {}) {
+  sendJson(response, 200, {
+    ok: false,
+    error,
+    message,
+    items: [],
+    ...details
+  });
+}
+
+async function readJsonResponse(upstreamResponse, fallbackMessage) {
+  const text = await upstreamResponse.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    const trimmedText = text.trim();
+    const upstreamMessage = trimmedText
+      ? `${fallbackMessage}: ${trimmedText.slice(0, 180)}`
+      : fallbackMessage;
+    throw new Error(upstreamMessage);
+  }
+}
+
+function decodeBasicHtmlEntities(value) {
+  return String(value || "")
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", "\"")
+    .replaceAll("&#39;", "'")
+    .replaceAll("&#x27;", "'");
 }
 
 function parsePoint(value) {
@@ -124,7 +163,8 @@ async function handleDirections(request, response, url) {
     return;
   }
 
-  const directionsUrl = buildNaverDirectionsUrl({ origin, destination });
+  const option = url.searchParams.get("option") || "traoptimal";
+  const directionsUrl = buildNaverDirectionsUrl({ origin, destination, option });
   const naverResponse = await fetch(directionsUrl, {
     headers: {
       "x-ncp-apigw-api-key-id": naverMapsApiKeyId,
@@ -244,11 +284,10 @@ async function handleMediaSearch(request, response, url) {
 }
 
 async function handleYouTubeSearch(response, query, provider) {
+  await refreshMediaCredentials();
+
   if (!youtubeApiKey) {
-    sendJson(response, 503, {
-      error: "missing-youtube-key",
-      message: "YOUTUBE_API_KEY is required."
-    });
+    sendMediaSearchFailure(response, "missing-youtube-key", "YOUTUBE_API_KEY is required.");
     return;
   }
 
@@ -259,13 +298,22 @@ async function handleYouTubeSearch(response, query, provider) {
   searchUrl.searchParams.set("maxResults", "12");
   searchUrl.searchParams.set("key", youtubeApiKey);
 
-  const youtubeResponse = await fetch(searchUrl);
-  const payload = await youtubeResponse.json();
+  const youtubeResponse = await fetch(searchUrl, {
+    headers: {
+      "Accept": "application/json"
+    }
+  });
+  let payload;
+  try {
+    payload = await readJsonResponse(youtubeResponse, "YouTube search returned a non-JSON response");
+  } catch (error) {
+    sendMediaSearchFailure(response, "youtube-search-invalid-response", error.message);
+    return;
+  }
 
   if (!youtubeResponse.ok) {
-    sendJson(response, youtubeResponse.status, {
-      error: "youtube-search-failed",
-      message: payload.error?.message || "YouTube search failed."
+    sendMediaSearchFailure(response, "youtube-search-failed", payload.error?.message || "YouTube search failed.", {
+      upstreamStatus: youtubeResponse.status
     });
     return;
   }
@@ -274,16 +322,16 @@ async function handleYouTubeSearch(response, query, provider) {
     id: `youtube:${item.id?.videoId || item.etag}`,
     provider,
     type: "video",
-    title: item.snippet?.title || "Untitled",
-    creator: item.snippet?.channelTitle || "YouTube",
-    description: item.snippet?.description || "YouTube result",
+    title: decodeBasicHtmlEntities(item.snippet?.title || "Untitled"),
+    creator: decodeBasicHtmlEntities(item.snippet?.channelTitle || "YouTube"),
+    description: decodeBasicHtmlEntities(item.snippet?.description || "YouTube result"),
     imageUrl: item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.default?.url || "",
     externalUrl: item.id?.videoId
       ? `https://www.youtube.com/watch?v=${item.id.videoId}`
       : ""
   }));
 
-  sendJson(response, 200, { items });
+  sendJson(response, 200, { ok: true, items });
 }
 
 function formatDuration(milliseconds) {
@@ -303,11 +351,12 @@ async function getSpotifyAccessToken() {
     method: "POST",
     headers: {
       "Authorization": `Basic ${Buffer.from(`${spotifyClientId}:${spotifyClientSecret}`).toString("base64")}`,
-      "Content-Type": "application/x-www-form-urlencoded"
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Accept": "application/json"
     },
-    body: "grant_type=client_credentials"
+    body: new URLSearchParams({ grant_type: "client_credentials" })
   });
-  const payload = await tokenResponse.json();
+  const payload = await readJsonResponse(tokenResponse, "Spotify token endpoint returned a non-JSON response");
 
   if (!tokenResponse.ok || !payload.access_token) {
     const message = payload.error_description || payload.error || "Spotify access token request failed.";
@@ -320,13 +369,10 @@ async function getSpotifyAccessToken() {
 }
 
 async function handleSpotifySearch(response, query) {
-  await refreshSpotifyCredentials();
+  await refreshMediaCredentials();
 
   if (!spotifyClientId || !spotifyClientSecret) {
-    sendJson(response, 503, {
-      error: "missing-spotify-credentials",
-      message: "SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are required."
-    });
+    sendMediaSearchFailure(response, "missing-spotify-credentials", "SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are required.");
     return;
   }
 
@@ -334,10 +380,7 @@ async function handleSpotifySearch(response, query) {
   try {
     accessToken = await getSpotifyAccessToken();
   } catch (error) {
-    sendJson(response, 502, {
-      error: "spotify-token-failed",
-      message: error.message || "Spotify access token request failed."
-    });
+    sendMediaSearchFailure(response, "spotify-token-failed", error.message || "Spotify access token request failed.");
     return;
   }
 
@@ -348,15 +391,21 @@ async function handleSpotifySearch(response, query) {
 
   const spotifyResponse = await fetch(searchUrl, {
     headers: {
-      "Authorization": `Bearer ${accessToken}`
+      "Authorization": `Bearer ${accessToken}`,
+      "Accept": "application/json"
     }
   });
-  const payload = await spotifyResponse.json();
+  let payload;
+  try {
+    payload = await readJsonResponse(spotifyResponse, "Spotify search returned a non-JSON response");
+  } catch (error) {
+    sendMediaSearchFailure(response, "spotify-search-invalid-response", error.message);
+    return;
+  }
 
   if (!spotifyResponse.ok) {
-    sendJson(response, spotifyResponse.status, {
-      error: "spotify-search-failed",
-      message: payload.error?.message || "Spotify search failed."
+    sendMediaSearchFailure(response, "spotify-search-failed", payload.error?.message || "Spotify search failed.", {
+      upstreamStatus: spotifyResponse.status
     });
     return;
   }
@@ -375,7 +424,7 @@ async function handleSpotifySearch(response, query) {
     };
   });
 
-  sendJson(response, 200, { items });
+  sendJson(response, 200, { ok: true, items });
 }
 
 async function handleStatic(request, response, url) {
@@ -426,6 +475,12 @@ async function handleRequest(request, response, url) {
 
   if (request.method === "GET" && url.pathname === "/api/media-search") {
     await handleMediaSearch(request, response, url);
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/favicon.ico") {
+    response.writeHead(204);
+    response.end();
     return;
   }
 
