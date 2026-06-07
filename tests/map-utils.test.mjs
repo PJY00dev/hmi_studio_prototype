@@ -29,12 +29,13 @@ test("normalizes map config with local defaults", () => {
   });
 });
 
-test("builds an SDK URL with geocoder and gl submodules", () => {
+test("builds an SDK URL with gl submodule only", () => {
   const url = new URL(toNaverMapsSdkUrl("client id/with spaces"));
 
   assert.equal(url.origin + url.pathname, "https://oapi.map.naver.com/openapi/v3/maps.js");
   assert.equal(url.searchParams.get("ncpKeyId"), "client id/with spaces");
-  assert.equal(url.searchParams.get("submodules"), "geocoder,gl");
+  assert.equal(url.searchParams.get("submodules"), "gl");
+  assert.equal(url.searchParams.get("v"), "20260608052747");
 });
 
 test("returns clear map failure copy", () => {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vehicle HMI Prototype</title>
-    <link rel="stylesheet" href="./styles.css?v=132" />
+    <link rel="stylesheet" href="./styles.css?v=134" />
   </head>
   <body>
     <script>
@@ -166,8 +166,14 @@
                 </div>
 
                 <button class="route-start-btn" id="routeStartBtn" type="button">
-                  <span class="route-start-badge" id="routeStartBadge">1</span>
-                  안내 시작
+                  <div class="route-timer-badge" id="routeTimerBadge">
+                    <svg class="timer-svg" viewBox="0 0 36 36">
+                      <path class="timer-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="3"/>
+                      <path class="timer-progress" id="timerProgress" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-dasharray="100, 100"/>
+                    </svg>
+                    <span class="timer-num" id="routeStartBadge">5</span>
+                  </div>
+                  <span class="btn-text">안내 시작</span>
                 </button>
 
                 <div class="route-card-footer">
@@ -225,8 +231,7 @@
                 <span>내 위치로</span>
               </button>
 
-              <!-- 현재 위치 라벨 (우하단) -->
-              <div class="nav-current-location" id="navCurrentLocation">성수동</div>
+
 
               <!-- 기존 검색결과 (숨김, JS 연동용) -->
               <section class="search-results" id="searchResults" aria-label="Search results" hidden></section>
@@ -710,6 +715,6 @@
     </main>
 
     <script src="./map-config.js?v=109"></script>
-    <script type="module" src="./app.js?v=133"></script>
+    <script type="module" src="./app.js?v=148"></script>
   </body>
 </html>

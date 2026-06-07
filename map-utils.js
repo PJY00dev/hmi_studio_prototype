@@ -28,7 +28,7 @@ export function normalizeNaverMapConfig(config = {}) {
 }
 
 export function toNaverMapsSdkUrl(ncpKeyId) {
-  return `${NAVER_SDK_BASE_URL}?ncpKeyId=${encodeURIComponent(ncpKeyId)}&submodules=geocoder,gl&v=20260606035443`;
+  return `${NAVER_SDK_BASE_URL}?ncpKeyId=${encodeURIComponent(ncpKeyId)}&submodules=gl&v=20260608052747`;
 }
 
 export function toNaverCompatibleLocalUrl(href) {
@@ -208,7 +208,43 @@ export function extractMultipleNaverRoutes(payload) {
     };
   }
 
-  return [route1, route2, route3];
+  // Route 4: 무료도로 우선 (Free Road First)
+  const path4 = offsetPath(formattedBase.path, 0.00044);
+  const route4 = {
+    ...formattedBase,
+    id: "free",
+    name: "무료도로 우선",
+    duration: Math.round(formattedBase.duration * 1.15),
+    durationText: formatDuration(formattedBase.duration * 1.15),
+    distance: Math.round(formattedBase.distance * 1.08),
+    distanceText: formatRouteDistance(formattedBase.distance * 1.08),
+    taxiFare: 700,
+    path: path4,
+    autonomousPct: 99,
+    batteryEstimate: 94,
+    batteryRoundTrip: 94,
+    description: "통행료가 발생하지 않는 무료 도로 우선 경로입니다."
+  };
+
+  // Route 5: 어린이안심 (Kid Safe)
+  const path5 = offsetPath(formattedBase.path, -0.00044);
+  const route5 = {
+    ...formattedBase,
+    id: "kidsafe",
+    name: "어린이안심",
+    duration: Math.round(formattedBase.duration * 1.00),
+    durationText: formatDuration(formattedBase.duration * 1.00),
+    distance: Math.round(formattedBase.distance * 1.00),
+    distanceText: formatRouteDistance(formattedBase.distance * 1.00),
+    taxiFare: formattedBase.taxiFare,
+    path: path5,
+    autonomousPct: 98,
+    batteryEstimate: 95,
+    batteryRoundTrip: 89,
+    description: "어린이 보호구역 및 안전 운행 구간 위주 경로입니다."
+  };
+
+  return [route1, route2, route3, route4, route5];
 }
 
 function parseSingleRoute(route) {

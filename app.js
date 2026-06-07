@@ -8,7 +8,8 @@ import {
   normalizeNaverLocalSearchItem,
   normalizeNaverMapConfig,
   toNaverCompatibleLocalUrl,
-  toNaverMapsSdkUrl
+  toNaverMapsSdkUrl,
+  formatRouteDistance
 } from "./map-utils.js?v=3";
 import { createAppPermissionState, getAppSettingDetail, toggleAppPermission } from "./app-settings-utils.js";
 import {
@@ -103,7 +104,6 @@ const navDetailCloseBtn = document.querySelector("#navDetailCloseBtn");
 const navSetDestBtn = document.querySelector("#navSetDestBtn");
 const navSearchTrigger = document.querySelector("#navSearchTrigger");
 const navMyLocationBtn = document.querySelector("#navMyLocationBtn");
-const navCurrentLocation = document.querySelector("#navCurrentLocation");
 
 // Navigation HUD & ETA bar
 const navGuidanceHud = document.querySelector("#navGuidanceHud");
@@ -120,8 +120,13 @@ const navStopBtn = document.querySelector("#navStopBtn");
 const routeStartBtn = document.querySelector("#routeStartBtn");
 const navMapSettingsBtn = document.querySelector("#navMapSettingsBtn");
 const routeCardCloseBtn = document.querySelector("#routeCardCloseBtn");
+const routeMoreBtn = document.querySelector("#routeMoreBtn");
+const routeCardFooter = document.querySelector(".route-card-footer");
 
 let isCameraTracking = true;
+let isRouteExpanded = false;
+let routeStartTimerId = null;
+let routeStartRemainingSeconds = 5;
 
 const naverCompatibleLocalUrl = toNaverCompatibleLocalUrl(window.location.href);
 if (naverCompatibleLocalUrl !== window.location.href) {
@@ -650,7 +655,7 @@ function functionById(id) {
 }
 
 function cardIcon(item, className = "card-icon") {
-  return `<span class="${className}" style="--card-color: ${item.color}" aria-hidden="true">${svgIcon(item.icon)}</span>`;
+  return `<span class="${className} launcher-icon-${item.icon}" style="--card-color: ${item.color}" aria-hidden="true">${svgIcon(item.icon)}</span>`;
 }
 
 function escapeHtml(value) {
@@ -1732,12 +1737,14 @@ function favoriteTileGrid(itemId) {
 }
 
 function renderApps() {
-  activeMediaApp = null;
-  activeMediaHost = "apps";
-  mediaSearchQuery = "";
-  selectedMediaId = null;
+  if (activeMediaHost !== "landscape") {
+    activeMediaApp = null;
+    activeMediaHost = "apps";
+    mediaSearchQuery = "";
+    selectedMediaId = null;
+    shortcutGrid.classList.remove("media-landscape-host");
+  }
   appsLayer.classList.remove("media-app-open");
-  shortcutGrid.classList.remove("media-landscape-host");
 
   appsLayer.innerHTML = `
     <!-- Top Climate quick settings panel -->
@@ -1810,7 +1817,7 @@ function renderApps() {
     app.className = "launcher-app";
     if (item.appId) app.dataset.appId = item.appId;
     app.innerHTML = `
-      ${cardIcon(item, "launcher-icon launcher-icon-" + item.icon)}
+      ${cardIcon(item, "launcher-icon")}
       <strong>${item.title}</strong>
     `;
     app.addEventListener("click", () => {
@@ -4354,54 +4361,99 @@ function initNaverMap() {
 
   loadNaverSdk()
     .then(() => {
-      const center = new naver.maps.LatLng(naverMapConfig.center.lat, naverMapConfig.center.lng);
-      naverMap = new naver.maps.Map(mapCanvas, {
-        center,
-        zoom: naverMapConfig.zoom,
-        zoomControl: false,
-        mapTypeControl: false,
-        scaleControl: false,
-        logoControlOptions: {
-          position: naver.maps.Position.BOTTOM_LEFT
-        },
-        gl: true,
-        customStyleId: "45c2abdd-a09b-4a64-a15a-9edb302e42a8"
-      });
+      let attempts = 0;
+      
+      function tryInitMap() {
+        console.log("[Map Debug] Instant Canvas Size at Init:", mapCanvas.offsetWidth, "x", mapCanvas.offsetHeight);
+        
+        // Wait for container to have physical dimensions (non-zero) before rendering vector GL map
+        if ((mapCanvas.offsetWidth === 0 || mapCanvas.offsetHeight === 0) && attempts < 15) {
+          attempts++;
+          setTimeout(tryInitMap, 100);
+          return;
+        }
 
-      // Initialize real-time traffic layer
-      trafficLayerInstance = new naver.maps.TrafficLayer({
-        interval: 30000 // Refresh traffic every 30 seconds
-      });
-      if (isTrafficLayerActive) {
-        trafficLayerInstance.setMap(naverMap);
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const lat = position.coords.latitude;
+              const lng = position.coords.longitude;
+              currentPosition.lat = lat;
+              currentPosition.lng = lng;
+              naverMapConfig.center = { lat, lng };
+              proceedWithMapInit(lat, lng);
+            },
+            (error) => {
+              console.warn("[Map Debug] Geolocation failed or denied, using default position:", error);
+              proceedWithMapInit(naverMapConfig.center.lat, naverMapConfig.center.lng);
+            },
+            { timeout: 5000, enableHighAccuracy: true }
+          );
+        } else {
+          proceedWithMapInit(naverMapConfig.center.lat, naverMapConfig.center.lng);
+        }
       }
 
-      vehicleMarker = new naver.maps.Marker({
-        position: center,
-        map: naverMap,
-        icon: createMarkerImage("vehicle-map-marker")
-      });
+      function proceedWithMapInit(lat, lng) {
+        const center = new naver.maps.LatLng(lat, lng);
+        naverMap = new naver.maps.Map(mapCanvas, {
+          center,
+          zoom: naverMapConfig.zoom,
+          zoomControl: false,
+          mapTypeControl: false,
+          scaleControl: false,
+          locationControl: false,
+          logoControlOptions: {
+            position: naver.maps.Position.BOTTOM_LEFT
+          },
+          gl: true,
+          customStyleId: "45c2abdd-a09b-4a64-a15a-9edb302e42a8"
+        });
 
-      searchMarker = new naver.maps.Marker({
-        position: center,
-        map: null,
-        title: currentDestinationLabel,
-        icon: createMarkerImage("search-map-marker")
-      });
+        window.mapInstance = naverMap;
 
-      naverMapReady = true;
-      setMapStatus("");
+        // Real-time traffic layer initialization is disabled due to custom map style rules
 
-      naver.maps.Event.addListener(naverMap, "dragstart", () => {
-        isCameraTracking = false;
-      });
-      
-      setTimeout(() => {
-        refreshNaverMap();
-        console.log("[Map Debug] Delayed Canvas Size:", mapCanvas.offsetWidth, "x", mapCanvas.offsetHeight);
-        console.log("[Map Debug] Delayed Children Count:", mapCanvas.children.length);
-        console.log("[Map Debug] Naver Map Object:", naverMap);
-      }, 300);
+        vehicleMarker = new naver.maps.Marker({
+          position: center,
+          map: naverMap,
+          icon: createMarkerImage("vehicle-map-marker")
+        });
+
+        searchMarker = new naver.maps.Marker({
+          position: center,
+          map: null,
+          title: currentDestinationLabel,
+          icon: createMarkerImage("search-map-marker")
+        });
+
+        naverMapReady = true;
+        setMapStatus("");
+
+        naver.maps.Event.addListener(naverMap, "dragstart", () => {
+          isCameraTracking = false;
+        });
+
+        naver.maps.Event.addListener(naverMap, "zoom_changed", () => {
+          if (currentRoutes && currentRoutes.length > 0) {
+            redrawRoutesOnMap();
+          }
+        });
+        
+        setTimeout(() => {
+          refreshNaverMap();
+          // ── GL 권한 핵심 진단 ──────────────────────────────────────
+          console.log("[Map Debug] naver.maps.glEnabled:", window.naver?.maps?.glEnabled);
+          console.log("[Map Debug] gl 옵션:", naverMap._mapOptions?.gl);
+          console.log("[Map Debug] 지도 타입:", naverMap.getMapTypeId());
+          const testCanvas = document.createElement("canvas");
+          const webgl = testCanvas.getContext("webgl") || testCanvas.getContext("experimental-webgl");
+          console.log("[Map Debug] 브라우저 WebGL 지원:", !!webgl);
+          // ────────────────────────────────────────────────────────────
+        }, 1000);
+      }
+
+      tryInitMap();
     })
     .catch(() => {
       mapCanvas.classList.add("map-placeholder");
@@ -4496,6 +4548,8 @@ function selectDestination(place, requestRoute = true) {
 
 async function requestRouteToDestination() {
   if (!selectedDestination) return;
+  clearAutoGuideTimer();
+  isRouteExpanded = false;
   setMapStatus("Calculating route...");
 
   const url = new URL("/api/directions", window.location.href);
@@ -4599,6 +4653,18 @@ function drawRouteOnMap(route, index, isSelected) {
 
     // 2. Draw traffic colored segments on top (vibrant colors)
     if (route.sections && route.sections.length > 0) {
+      // Draw a base color line for the entire path first to avoid gaps in sections
+      const baseColorPoly = new naver.maps.Polyline({
+        map: naverMap,
+        path: latLngPath,
+        strokeColor: "#00c73c", // Default to Vibrant Green (원활)
+        strokeWeight: 6.5,
+        strokeOpacity: 1.0,
+        strokeLineCap: "round",
+        strokeLineJoin: "round"
+      });
+      routePolylinesList.push(baseColorPoly);
+
       route.sections.forEach((sec) => {
         const startIdx = sec.pointIndex;
         const count = sec.pointCount;
@@ -4700,56 +4766,123 @@ function drawRouteOnMap(route, index, isSelected) {
   }
 }
 
-function drawChevronsOnPath(pathPoints) {
-  if (pathPoints.length < 5) return;
+function getHaversineDistance(p1, p2) {
+  const R = 6378137; // Earth's radius in meters
+  const dLat = ((p2.lat - p1.lat) * Math.PI) / 180;
+  const dLng = ((p2.lng - p1.lng) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((p1.lat * Math.PI) / 180) *
+      Math.cos((p2.lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
-  // Arrow density increased: draw about 20-25 arrows along the path
-  const step = Math.max(6, Math.floor(pathPoints.length / 22));
-  for (let i = step; i < pathPoints.length - 5; i += step) {
+function drawChevronsOnPath(pathPoints) {
+  if (pathPoints.length < 2) return;
+
+  const zoom = naverMap ? naverMap.getZoom() : 15;
+  
+  // Spacing dynamically scales with zoom level to prevent crowding when zoomed out
+  let targetInterval;
+  if (zoom >= 17) {
+    targetInterval = 80;
+  } else if (zoom === 16) {
+    targetInterval = 120;
+  } else if (zoom === 15) {
+    targetInterval = 250;
+  } else if (zoom === 14) {
+    targetInterval = 500;
+  } else if (zoom === 13) {
+    targetInterval = 1000;
+  } else {
+    // Zoom < 13: Do not draw any chevrons to avoid cluttering and visual issues
+    return;
+  }
+
+  let accumulatedDistance = 0;
+
+  for (let i = 0; i < pathPoints.length - 1; i++) {
     const p1 = pathPoints[i];
-    const p2 = pathPoints[i + 2] || pathPoints[i + 1];
+    const p2 = pathPoints[i + 1];
     if (!p1 || !p2) continue;
 
-    const angle = calculateBearing(p1, p2);
+    let segmentDist = getHaversineDistance(p1, p2);
+    if (segmentDist === 0) continue;
 
-    // Chevron SVG rotated in the direction of the path flow using HTML marker content
-    // and styled with a dark outline for high contrast readability
-    const marker = new naver.maps.Marker({
-      position: new naver.maps.LatLng(p1.lat, p1.lng),
-      map: naverMap,
-      icon: {
-        content: `
-          <div style="transform: rotate(${angle}deg); width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; transform-origin: center center;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 12 12" style="display: block;">
-              <path d="M2 9 L6 4 L10 9" fill="none" stroke="#000000" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.65"/>
-              <path d="M2 9 L6 4 L10 9" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-        `,
-        anchor: new naver.maps.Point(7, 7)
+    let currentLat = p1.lat;
+    let currentLng = p1.lng;
+
+    while (accumulatedDistance + segmentDist >= targetInterval) {
+      const neededDist = targetInterval - accumulatedDistance;
+      const ratio = neededDist / segmentDist;
+
+      // Interpolate coordinates
+      const interpLat = currentLat + (p2.lat - currentLat) * ratio;
+      const interpLng = currentLng + (p2.lng - currentLng) * ratio;
+
+      const angle = calculateBearing({ lat: currentLat, lng: currentLng }, p2);
+
+      const marker = new naver.maps.Marker({
+        position: new naver.maps.LatLng(interpLat, interpLng),
+        map: naverMap,
+        icon: {
+          content: `
+            <div style="transform: rotate(${angle}deg); width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; transform-origin: center center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 12 12" style="display: block;">
+                <path d="M2 9 L6 4 L10 9" fill="none" stroke="#000000" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.65"/>
+                <path d="M2 9 L6 4 L10 9" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          `,
+          anchor: new naver.maps.Point(7, 7)
+        }
+      });
+
+      marker.setClickable(false);
+      routeArrowMarkers.push(marker);
+
+      // Advance starting point of remaining segment
+      currentLat = interpLat;
+      currentLng = interpLng;
+      accumulatedDistance = 0;
+      segmentDist = getHaversineDistance({ lat: currentLat, lng: currentLng }, p2);
+
+      if (segmentDist < 0.1) {
+        break;
       }
-    });
+    }
 
-    // Make the arrow markers unclickable
-    marker.setClickable(false);
-    routeArrowMarkers.push(marker);
+    accumulatedDistance += segmentDist;
   }
 }
 
 function renderRouteOptions(routes) {
   currentRoutes = routes;
-  selectedRouteIndex = 0;
-
-  const badge = document.getElementById("routeStartBadge");
-  if (badge) badge.textContent = "1";
 
   const container = document.getElementById("routeOptionsList");
   if (!container) return;
 
   routeDestination.textContent = selectedDestination.name;
 
+  // Render 3 routes initially, expand to 5 if isRouteExpanded is true
+  const routesToRender = isRouteExpanded ? routes : routes.slice(0, 3);
+
+  // If we just rendered the initial state (3 routes), start the 5s auto-guidance timer
+  if (!isRouteExpanded) {
+    selectedRouteIndex = 0;
+    startAutoGuideTimer();
+  }
+
+  // Update card footer (More button) visibility
+  if (routeCardFooter) {
+    routeCardFooter.style.display = (!isRouteExpanded && routes.length > 3) ? "flex" : "none";
+  }
+
   // Build items HTML
-  container.innerHTML = routes.map((route, i) => {
+  container.innerHTML = routesToRender.map((route, i) => {
     const isActive = i === selectedRouteIndex ? "active" : "";
     const num = i + 1;
 
@@ -4758,14 +4891,19 @@ function renderRouteOptions(routes) {
     now.setMilliseconds(now.getMilliseconds() + route.duration);
     const hours = now.getHours();
     const minutes = now.getMinutes();
-    const ampmKo = hours >= 12 ? "오후" : "오전";
+    const ampmEn = hours >= 12 ? "PM" : "AM";
     const formattedHour = hours % 12 || 12;
+    const formattedHourStr = String(formattedHour).padStart(2, "0");
     const formattedMin = minutes < 10 ? `0${minutes}` : minutes;
-    const etaTextKo = `${ampmKo} ${String(formattedHour).padStart(2, "0")}:${String(formattedMin).padStart(2, "0")}`;
+    const etaTextEn = `${formattedHourStr}:${formattedMin} ${ampmEn}`;
 
     // Battery estimations based on route distance
     const batteryLeft = Math.max(0, 95 - Math.round(route.distance / 3500));
     const batteryRound = Math.max(0, 95 - Math.round((route.distance * 2) / 3500));
+
+    // Distance and Duration localization
+    const durationMin = Math.round(route.duration / 60000);
+    const distanceKm = Math.round(route.distance / 1000);
 
     return `
       <button class="route-option-item ${isActive}" type="button" data-route-opt-index="${i}">
@@ -4774,23 +4912,28 @@ function renderRouteOptions(routes) {
           <span class="route-opt-name">${route.name}</span>
           <span class="route-opt-sub">자율주행 가능 구간 ${route.autonomousPct}%</span>
         </div>
-        <div class="route-opt-body">
-          <span class="route-opt-time">${route.durationText}</span>
-          <span class="route-opt-eta">${etaTextKo}</span>
-          <span class="route-opt-meta">${route.distanceText}</span>
-          <span class="route-opt-meta route-opt-fare">₩${(route.taxiFare || 0).toLocaleString("ko-KR")}</span>
-          <span class="route-opt-battery">
-            <svg class="battery-icon" viewBox="0 0 24 24" aria-hidden="true" style="vertical-align: middle; width: 16px; height: 10px;">
-              <rect x="2" y="6" width="16" height="12" rx="2" stroke="currentColor" fill="none" stroke-width="2"/>
-              <line x1="20" y1="10" x2="20" y2="14" stroke="currentColor" stroke-width="2"/>
-              <rect x="4" y="8" width="6" height="8" fill="currentColor"/>
+        <div class="route-opt-body-grid">
+          <!-- Row 1: Time (Left), ETA (Center), Distance (Right) -->
+          <div class="route-opt-time">${durationMin}분</div>
+          <div class="route-opt-eta">${etaTextEn}</div>
+          <div class="route-opt-meta route-opt-dist">${distanceKm}km</div>
+          
+          <!-- Row 2: Fare (Left), Blank (Center), Battery (Right) -->
+          <div class="route-opt-fare">${(route.taxiFare || 0).toLocaleString("ko-KR")}원</div>
+          <div></div>
+          <div class="route-opt-battery">
+            <svg class="battery-icon filled" viewBox="0 0 24 24" aria-hidden="true" style="vertical-align: middle; width: 16px; height: 10px;">
+              <rect x="1" y="4" width="18" height="14" rx="2" fill="currentColor"/>
+              <rect x="20" y="8" width="3" height="6" rx="1" fill="currentColor"/>
             </svg>
-            ${batteryLeft}%
-          </span>
+            <span class="battery-text">${batteryLeft}%</span>
+          </div>
         </div>
+        ${isActive ? `
         <div class="route-opt-footer">
           왕복 주행 후 예상 ${batteryRound}%
         </div>
+        ` : ""}
       </button>
     `;
   }).join("");
@@ -4798,6 +4941,7 @@ function renderRouteOptions(routes) {
   // Attach click listeners to route list items
   container.querySelectorAll("[data-route-opt-index]").forEach((btn) => {
     btn.addEventListener("click", () => {
+      clearAutoGuideTimer(); // Stop timer when user manually selects a route
       const idx = Number(btn.dataset.routeOptIndex);
       selectRoute(idx);
     });
@@ -4805,7 +4949,7 @@ function renderRouteOptions(routes) {
 
   // Fit bounds to show all options
   const bounds = new naver.maps.LatLngBounds();
-  routes.forEach((r) => {
+  routesToRender.forEach((r) => {
     r.path.forEach((pt) => bounds.extend(new naver.maps.LatLng(pt.lat, pt.lng)));
   });
   bounds.extend(new naver.maps.LatLng(currentPosition.lat, currentPosition.lng));
@@ -4819,7 +4963,54 @@ function renderRouteOptions(routes) {
 
 /* ===== Navigation Simulation and Controls ===== */
 
+function startAutoGuideTimer() {
+  clearAutoGuideTimer();
+  
+  const badgeContainer = document.querySelector("#routeTimerBadge");
+  if (badgeContainer) {
+    badgeContainer.style.display = "flex";
+  }
+  
+  routeStartRemainingSeconds = 5;
+  updateTimerBadgeUI();
+  
+  routeStartTimerId = window.setInterval(() => {
+    routeStartRemainingSeconds--;
+    updateTimerBadgeUI();
+    
+    if (routeStartRemainingSeconds <= 0) {
+      clearAutoGuideTimer();
+      startNavigation();
+    }
+  }, 1000);
+}
+
+function updateTimerBadgeUI() {
+  const badge = document.querySelector("#routeStartBadge");
+  const progress = document.querySelector("#timerProgress");
+  
+  if (badge) {
+    badge.textContent = routeStartRemainingSeconds;
+  }
+  if (progress) {
+    const pct = (routeStartRemainingSeconds / 5) * 100;
+    progress.setAttribute("stroke-dasharray", `${pct}, 100`);
+  }
+}
+
+function clearAutoGuideTimer() {
+  if (routeStartTimerId) {
+    window.clearInterval(routeStartTimerId);
+    routeStartTimerId = null;
+  }
+  const badgeContainer = document.querySelector("#routeTimerBadge");
+  if (badgeContainer) {
+    badgeContainer.style.display = "none";
+  }
+}
+
 function startNavigation() {
+  clearAutoGuideTimer();
   const selectedRoute = currentRoutes[selectedRouteIndex];
   if (!selectedRoute) return;
 
@@ -4918,22 +5109,22 @@ function redrawRoutesForNavigation() {
 }
 
 function getTurnArrowSvg(type) {
-  const svgStyle = `width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"`;
+  const svgStyle = `xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"`;
   switch (type) {
     case 1: // 직진
       return `<svg ${svgStyle}><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
     case 2: // 좌회전
     case 7: // 좌측 도로
     case 14:
-      return `<svg ${svgStyle}><path d="M19 19h-6a4 4 0 0 1-4-4V5"></path><polyline points="5 9 9 5 13 9"></polyline></svg>`;
+      return `<svg ${svgStyle}><path d="M12 19V11a4 4 0 0 0-4-4H5"></path><polyline points="9 3 5 7 9 11"></polyline></svg>`;
     case 3: // 우회전
     case 8: // 우측 도로
     case 15:
-      return `<svg ${svgStyle}><path d="M5 19h6a4 4 0 0 0 4-4V5"></path><polyline points="11 9 15 5 19 9"></polyline></svg>`;
+      return `<svg ${svgStyle}><path d="M12 19V11a4 4 0 0 1 4-4h3"></path><polyline points="15 3 19 7 15 11"></polyline></svg>`;
     case 4: // 완만한 좌회전
-      return `<svg ${svgStyle}><path d="M17 19c-3.5-1.5-6-4.5-7-8l-2-6"></path><polyline points="4 8 8 5 11 9"></polyline></svg>`;
+      return `<svg ${svgStyle}><path d="M12 19V13a5 5 0 0 0-2-4L5 5"></path><polyline points="5 10 5 5 10 5"></polyline></svg>`;
     case 5: // 완만한 우회전
-      return `<svg ${svgStyle}><path d="M7 19c3.5-1.5 6-4.5 7-8l2-6"></path><polyline points="13 9 16 5 20 8"></polyline></svg>`;
+      return `<svg ${svgStyle}><path d="M12 19V13a5 5 0 0 1 2-4L19 5"></path><polyline points="14 5 19 5 19 10"></polyline></svg>`;
     case 6: // 유턴
       return `<svg ${svgStyle}><path d="M8 19V9a4 4 0 0 1 8 0v10"></path><polyline points="12 15 8 19 4 15"></polyline></svg>`;
     case 24: // 목적지
@@ -4948,8 +5139,8 @@ function updateNavigationSimulation() {
   const route = navState.currentRoute;
   if (!route) return;
 
-  const totalPoints = navSimState.vehiclePath.length;
-  const progressRatio = navSimState.vehiclePathIndex / totalPoints;
+  const totalPoints = navSimState.vehiclePath ? navSimState.vehiclePath.length : 0;
+  const progressRatio = navSimState.vehiclePathIndex / (totalPoints || 1);
 
   // Update remaining distance and time
   const remainingMeters = Math.max(0, Math.round(route.distance * (1 - progressRatio)));
@@ -4966,13 +5157,12 @@ function updateNavigationSimulation() {
   arrival.setSeconds(arrival.getSeconds() + remainingSeconds);
   const hours = arrival.getHours();
   const minutes = arrival.getMinutes();
-  const formattedMin = minutes < 10 ? `0${minutes}` : minutes;
-  const ampm = hours >= 12 ? "오후" : "오전";
-  const formattedHour = hours % 12 || 12;
-  navEtaArrival.textContent = `도착 예정 - ${ampm} ${formattedHour}:${formattedMin}`;
+  const formattedHour = String(hours).padStart(2, "0");
+  const formattedMin = String(minutes).padStart(2, "0");
+  navEtaArrival.textContent = `${formattedHour}:${formattedMin}`;
 
   // Update Guidance HUD instructions based on guides array
-  const totalGuides = route.guides.length;
+  const totalGuides = route.guides ? route.guides.length : 0;
   if (totalGuides > 0) {
     const currentGuide = route.guides[navSimState.guideIndex];
     if (currentGuide) {
@@ -5037,27 +5227,10 @@ function moveVehicleMarkerSimulation() {
 }
 
 function toggleTrafficLayer() {
-  if (!naverMap || !trafficLayerInstance) return;
-
-  isTrafficLayerActive = !isTrafficLayerActive;
-
-  // Highlight map settings button when active
-  const settingsBtn = document.getElementById("navMapSettingsBtn");
-  if (settingsBtn) {
-    settingsBtn.classList.toggle("active", isTrafficLayerActive);
-  }
-
-  if (isTrafficLayerActive) {
-    trafficLayerInstance.setMap(naverMap);
-    setMapStatus("실시간 교통정보가 활성화되었습니다.");
-  } else {
-    trafficLayerInstance.setMap(null);
-    setMapStatus("실시간 교통정보가 비활성화되었습니다.");
-  }
-
+  setMapStatus("커스텀 스타일 적용 중에는 실시간 교통정보를 사용할 수 없습니다.");
   setTimeout(() => {
     setMapStatus("");
-  }, 2000);
+  }, 3000);
 }
 
 /* ===== Pleos Connect Navigation Flow ===== */
@@ -5911,10 +6084,18 @@ navStopBtn?.addEventListener("click", () => {
 });
 
 routeCardCloseBtn?.addEventListener("click", () => {
+  clearAutoGuideTimer();
+  isRouteExpanded = false;
   routeCard.hidden = true;
   clearRouteOverlays();
   if (searchMarker) searchMarker.setMap(null);
   selectedDestination = null;
+});
+
+routeMoreBtn?.addEventListener("click", () => {
+  clearAutoGuideTimer();
+  isRouteExpanded = true;
+  renderRouteOptions(currentRoutes);
 });
 
 navMapSettingsBtn?.addEventListener("click", () => {
@@ -6311,6 +6492,8 @@ const dragThreshold = 120; // 120px 이상 아래로 내리면 닫힘
 const appsDragHandle = document.querySelector("#appsDragHandle");
 
 if (appsDragHandle && appsLayer) {
+  let tickApps = false;
+
   appsDragHandle.addEventListener("pointerdown", (e) => {
     isDraggingApps = true;
     startY = e.clientY;
@@ -6322,13 +6505,24 @@ if (appsDragHandle && appsLayer) {
     if (!isDraggingApps) return;
     currentY = e.clientY - startY;
     if (currentY < 0) currentY = 0;
-    appsLayer.style.transform = `translate(-50%, calc(-50% + ${currentY}px))`;
+
+    if (!tickApps) {
+      window.requestAnimationFrame(() => {
+        if (isDraggingApps) {
+          appsLayer.style.transform = `translate(-50%, calc(-50% + ${currentY}px))`;
+        }
+        tickApps = false;
+      });
+      tickApps = true;
+    }
   });
 
-  appsDragHandle.addEventListener("pointerup", (e) => {
+  const handleAppsPointerUp = (e) => {
     if (!isDraggingApps) return;
     isDraggingApps = false;
-    appsDragHandle.releasePointerCapture(e.pointerId);
+    try {
+      appsDragHandle.releasePointerCapture(e.pointerId);
+    } catch (err) {}
 
     appsLayer.style.transition = "transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease";
 
@@ -6348,7 +6542,10 @@ if (appsDragHandle && appsLayer) {
       }, 300);
     }
     currentY = 0;
-  });
+  };
+
+  appsDragHandle.addEventListener("pointerup", handleAppsPointerUp);
+  appsDragHandle.addEventListener("pointercancel", handleAppsPointerUp);
 }
 
 let isDraggingSettings = false;
@@ -6358,6 +6555,8 @@ let currentSettingsY = 0;
 const settingsDragHandle = document.querySelector("#settingsDragHandle");
 
 if (settingsDragHandle && vehicleSettingsLayer) {
+  let tickSettings = false;
+
   settingsDragHandle.addEventListener("pointerdown", (e) => {
     isDraggingSettings = true;
     startSettingsY = e.clientY;
@@ -6369,13 +6568,24 @@ if (settingsDragHandle && vehicleSettingsLayer) {
     if (!isDraggingSettings) return;
     currentSettingsY = e.clientY - startSettingsY;
     if (currentSettingsY < 0) currentSettingsY = 0;
-    vehicleSettingsLayer.style.transform = `translateY(${currentSettingsY}px)`;
+
+    if (!tickSettings) {
+      window.requestAnimationFrame(() => {
+        if (isDraggingSettings) {
+          vehicleSettingsLayer.style.transform = `translateY(${currentSettingsY}px)`;
+        }
+        tickSettings = false;
+      });
+      tickSettings = true;
+    }
   });
 
-  settingsDragHandle.addEventListener("pointerup", (e) => {
+  const handleSettingsPointerUp = (e) => {
     if (!isDraggingSettings) return;
     isDraggingSettings = false;
-    settingsDragHandle.releasePointerCapture(e.pointerId);
+    try {
+      settingsDragHandle.releasePointerCapture(e.pointerId);
+    } catch (err) {}
 
     vehicleSettingsLayer.style.transition = "transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease";
 
@@ -6395,5 +6605,8 @@ if (settingsDragHandle && vehicleSettingsLayer) {
       }, 300);
     }
     currentSettingsY = 0;
-  });
+  };
+
+  settingsDragHandle.addEventListener("pointerup", handleSettingsPointerUp);
+  settingsDragHandle.addEventListener("pointercancel", handleSettingsPointerUp);
 }
