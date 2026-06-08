@@ -387,7 +387,7 @@ async function handleSpotifySearch(response, query) {
   const searchUrl = new URL("https://api.spotify.com/v1/search");
   searchUrl.searchParams.set("q", query);
   searchUrl.searchParams.set("type", "track");
-  searchUrl.searchParams.set("limit", "12");
+  searchUrl.searchParams.set("limit", "10"); // Dev mode cap: max 10
 
   const spotifyResponse = await fetch(searchUrl, {
     headers: {
