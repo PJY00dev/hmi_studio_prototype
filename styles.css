@@ -122,6 +122,8 @@
   --connect-surface-border: 1px solid rgba(19, 20, 23, 0.2);
   --connect-surface-shadow: 0px 6px 24px rgba(0, 0, 0, 0.08);
   --connect-surface-radius: 35px;
+  --connect-card-radius: 24px;
+  --connect-card-shadow: 0 16px 36px rgba(0, 0, 0, 0.3);
 }
 
 * {
@@ -625,7 +627,7 @@ button {
   display: grid;
   grid-template-columns: var(--connect-driving-ratio) minmax(0, 1fr);
   padding: 0;
-  --tile-gap: clamp(8px, 0.85vw, 16px);
+  --tile-gap: 8px;
   --map-width: var(--connect-driving-ratio);
   --resize-left: var(--connect-driving-ratio);
 }
@@ -658,7 +660,7 @@ button {
   grid-column: 1;
   position: relative;
   overflow: hidden;
-  background: var(--pleos-basic-00);
+  background: transparent;
   min-width: 0;
   height: 100%;
   margin: 0;
@@ -1227,8 +1229,8 @@ button {
 .shortcut-section {
   height: 100%;
   min-height: 0;
-  padding-top: var(--tile-gap);
-  padding-bottom: var(--tile-gap);
+  padding-top: 0;
+  padding-bottom: 0;
   padding-right: clamp(16px, 1.8vw, 32px);
 }
 
@@ -1328,6 +1330,7 @@ button {
 .shortcut-grid.media-landscape-host {
   display: block;
   overflow: hidden;
+  position: relative;
 }
 
 .shortcut-grid.media-landscape-host .media-app-panel {
@@ -3767,6 +3770,7 @@ svg.gnb-apps-icon {
   border: 0;
   border-radius: var(--connect-card-radius);
   box-shadow: var(--connect-card-shadow);
+  overflow: hidden;
 }
 
 .media-tablet-topbar {
@@ -4095,8 +4099,8 @@ svg.gnb-apps-icon {
 }
 
 .spotify-now-panel {
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
   padding: 24px;
   overflow: hidden;
@@ -4109,16 +4113,17 @@ svg.gnb-apps-icon {
 }
 
 .spotify-now-art {
-  width: min(100%, 290px);
+  width: min(100%, 200px);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  justify-self: center;
+  align-self: center;
   overflow: hidden;
   border-radius: 18px;
   background: linear-gradient(135deg, #1ed760, #106f35);
   color: #050505;
   box-shadow: 0 28px 60px rgba(0, 0, 0, 0.42);
+  flex-shrink: 0;
 }
 
 .spotify-now-art svg {
@@ -4364,6 +4369,18 @@ svg.gnb-apps-icon {
   gap: 16px;
   overflow-y: auto;
   padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.26) transparent;
+}
+
+.youtube-video-meta::-webkit-scrollbar {
+  display: block;
+  width: 8px;
+}
+
+.youtube-video-meta::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.24);
 }
 
 .youtube-video-meta h2 {
@@ -4459,6 +4476,16 @@ svg.gnb-apps-icon {
   scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
 }
 
+.youtube-related-list::-webkit-scrollbar {
+  display: block;
+  width: 8px;
+}
+
+.youtube-related-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .youtube-related-item {
   width: 100%;
   min-height: 96px;
@@ -4503,6 +4530,21 @@ svg.gnb-apps-icon {
   border-radius: 8px;
   background: rgba(255, 0, 51, 0.9);
   transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.youtube-related-thumb::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-left: 8px solid #ffffff;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  transform: translate(-30%, -50%);
+  z-index: 2;
 }
 
 .youtube-related-thumb svg {
@@ -11478,3 +11520,578 @@ svg.gnb-apps-icon {
 .route-option-item:not(.active) .route-opt-sub {
   color: var(--pleos-text-tertiary);
 }
+
+/* ==========================================================================
+   HMI Prototype Design Upgrades & Refinements
+   ========================================================================== */
+
+/* Disable Red Play Badges / Overlays on YouTube Thumbnails */
+.youtube-related-thumb::before,
+.youtube-related-thumb::after {
+  display: none !important;
+}
+
+/* Establish Clean Typography Hierarchy & Prevent Clutter/Clipping */
+
+/* YouTube Related List Items */
+.youtube-related-item strong {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  line-height: 20px !important;
+  font-weight: 600 !important;
+  white-space: normal !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+}
+
+.youtube-related-item small {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 13px !important;
+  line-height: 18px !important;
+  font-weight: 400 !important;
+  -webkit-line-clamp: 1 !important;
+}
+
+/* Spotify Search Results list items */
+.spotify-result-copy strong {
+  color: #ffffff !important;
+  font-size: 17px !important;
+  line-height: 23px !important;
+  font-weight: 600 !important;
+}
+
+.spotify-result-copy small {
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 14px !important;
+  line-height: 19px !important;
+  font-weight: 400 !important;
+}
+
+/* Spotify Now Playing queue items */
+.spotify-queue b {
+  color: #ffffff !important;
+  font-size: 15px !important;
+  line-height: 19px !important;
+  font-weight: 500 !important;
+}
+
+.spotify-queue small {
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  font-weight: 400 !important;
+}
+
+/* YouTube Watch Page Channel Information */
+.youtube-channel-row strong {
+  color: #ffffff !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+}
+
+.youtube-channel-row small {
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+
+.youtube-channel-row button {
+  min-height: 36px !important;
+  padding: 0 16px !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: #0f0f0f !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+/* YouTube action chips row */
+.youtube-action-row span {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  min-height: 38px !important;
+}
+
+/* Navigation Rail Outline Icon Standardizations */
+.spotify-tablet-rail button svg,
+.youtube-tablet-rail button svg {
+  width: 26px !important;
+  height: 26px !important;
+}
+
+/* ==========================================================================
+   YouTube Custom Grid Feed (List Mode) & watch-mode Toggle Styles
+   ========================================================================== */
+
+.youtube-media-app.list-mode .youtube-tablet-shell {
+  grid-template-columns: 86px minmax(0, 1fr) !important;
+}
+
+.youtube-media-app.list-mode .youtube-related-panel {
+  display: none !important;
+}
+
+.youtube-media-app.watch-mode .youtube-tablet-shell {
+  grid-template-columns: 86px minmax(0, 1.2fr) minmax(340px, 0.66fr) !important;
+}
+
+/* Browse List Feed Panel */
+.youtube-list-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  padding: 20px !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+}
+
+/* Custom Grid Feed of Videos */
+.youtube-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important;
+  gap: 20px !important;
+}
+
+.youtube-grid-card {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  text-align: left !important;
+  border-radius: 12px !important;
+}
+
+.youtube-grid-card:hover .youtube-card-thumb {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3) !important;
+}
+
+.youtube-card-thumb {
+  width: 100% !important;
+  aspect-ratio: 16 / 9 !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  background: #202020 !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.youtube-card-info-row {
+  display: flex !important;
+  gap: 10px !important;
+  padding: 0 4px !important;
+}
+
+.youtube-card-text {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  min-width: 0 !important;
+}
+
+.youtube-card-text strong {
+  color: #ffffff !important;
+  font-size: 14px !important;
+  line-height: 18px !important;
+  font-weight: 600 !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.youtube-card-text span {
+  color: rgba(255,255,255,0.6) !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  font-weight: 400 !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+}
+
+/* Watch Page Back Button */
+.youtube-back-button {
+  align-self: start !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: #ffffff !important;
+  padding: 6px 14px !important;
+  border-radius: 999px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  margin-bottom: 8px !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease !important;
+}
+
+.youtube-back-button:hover {
+  background: rgba(255,255,255,0.14) !important;
+  border-color: rgba(255,255,255,0.2) !important;
+}
+
+.youtube-back-button svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* Shorts Feed Grid */
+.youtube-shorts-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.youtube-shorts-card {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  cursor: pointer !important;
+  text-align: left !important;
+}
+
+.youtube-shorts-thumb {
+  width: 100% !important;
+  aspect-ratio: 9 / 16 !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  background: #202020 !important;
+  position: relative !important;
+}
+
+.youtube-shorts-overlay {
+  position: absolute !important;
+  bottom: 8px !important;
+  left: 8px !important;
+  background: rgba(0,0,0,0.6) !important;
+  color: #ffffff !important;
+  font-size: 10px !important;
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+  font-weight: 600 !important;
+}
+
+.youtube-shorts-info {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1px !important;
+  padding: 0 2px !important;
+}
+
+.youtube-shorts-info strong {
+  color: #ffffff !important;
+  font-size: 13px !important;
+  line-height: 16px !important;
+  font-weight: 600 !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.youtube-shorts-info span {
+  color: rgba(255,255,255,0.6) !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+}
+
+/* Subscriptions Header List */
+.youtube-subs-header {
+  display: flex !important;
+  gap: 16px !important;
+  padding: 8px 4px 16px !important;
+  overflow-x: auto !important;
+  border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+  margin-bottom: 12px !important;
+}
+
+.youtube-sub-channel {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 4px !important;
+  min-width: 70px !important;
+  font-size: 11px !important;
+  color: rgba(255,255,255,0.8) !important;
+  text-align: center !important;
+}
+
+/* Profile Tab / Dashboard */
+.youtube-you-profile {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+  padding: 12px 4px !important;
+}
+
+.youtube-channel-avatar.large {
+  width: 58px !important;
+  height: 58px !important;
+  font-size: 22px !important;
+}
+
+.youtube-you-info h2 {
+  margin: 0 0 2px 0 !important;
+  color: #ffffff !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+}
+
+.youtube-you-info span {
+  font-size: 13px !important;
+  color: rgba(255,255,255,0.6) !important;
+}
+
+.youtube-you-section {
+  margin-top: 24px !important;
+}
+
+.youtube-you-section h3 {
+  font-size: 16px !important;
+  color: #ffffff !important;
+  margin: 0 0 12px 0 !important;
+  padding-left: 4px !important;
+}
+
+.youtube-you-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.youtube-you-card {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  cursor: pointer !important;
+  text-align: left !important;
+}
+
+.youtube-you-card strong {
+  color: #ffffff !important;
+  font-size: 13px !important;
+  line-height: 16px !important;
+  font-weight: 600 !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.youtube-card-thumb.mini {
+  aspect-ratio: 16 / 9 !important;
+  border-radius: 8px !important;
+}
+
+/* ==========================================================================
+   Spotify Custom Tab Screens Layout Styles
+   ========================================================================== */
+
+/* Search discovery grid */
+.spotify-genre-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+  gap: 14px !important;
+}
+
+.spotify-genre-card {
+  aspect-ratio: 1.1 !important;
+  border-radius: 10px !important;
+  padding: 12px !important;
+  position: relative !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+}
+
+.spotify-genre-card span {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  position: absolute !important;
+  top: 12px !important;
+  left: 12px !important;
+}
+
+.spotify-genre-card.pop { background: linear-gradient(135deg, #e02c5c, #f35b88) !important; }
+.spotify-genre-card.kpop { background: linear-gradient(135deg, #1fa356, #32d677) !important; }
+.spotify-genre-card.hiphop { background: linear-gradient(135deg, #bc5900, #e67d22) !important; }
+.spotify-genre-card.rock { background: linear-gradient(135deg, #e91e63, #9c27b0) !important; }
+.spotify-genre-card.electronic { background: linear-gradient(135deg, #2b6cb0, #4299e1) !important; }
+.spotify-genre-card.chill { background: linear-gradient(135deg, #4a5568, #718096) !important; }
+
+/* Library Tab Styles */
+.spotify-library-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.spotify-library-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 8px !important;
+  border-radius: 8px !important;
+  background: rgba(255,255,255,0.03) !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.spotify-library-item:hover {
+  background: rgba(255,255,255,0.07) !important;
+}
+
+.spotify-library-art {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 6px !important;
+  background: #333333 !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 15px !important;
+  font-weight: bold !important;
+  color: #ffffff !important;
+}
+
+.spotify-library-art.liked-songs {
+  background: linear-gradient(135deg, #450af5, #c4efd9) !important;
+  font-size: 20px !important;
+}
+
+.spotify-library-art.mix {
+  background: linear-gradient(135deg, #1db954, #126b30) !important;
+}
+
+.spotify-library-art.album {
+  background: linear-gradient(135deg, #f39c12, #d35400) !important;
+}
+
+.spotify-library-info {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+.spotify-library-info strong {
+  font-size: 15px !important;
+  color: #ffffff !important;
+}
+
+.spotify-library-info span {
+  font-size: 12px !important;
+  color: rgba(255,255,255,0.5) !important;
+}
+
+/* Profile Tab Styles */
+.spotify-profile-card {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  background: rgba(255,255,255,0.04) !important;
+  padding: 12px !important;
+  border-radius: 10px !important;
+  margin-bottom: 18px !important;
+}
+
+.spotify-profile-avatar {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 50% !important;
+  background: var(--spotify-green-bright) !important;
+  color: #000000 !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+}
+
+.spotify-profile-details {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1px !important;
+}
+
+.spotify-profile-details strong {
+  font-size: 16px !important;
+  color: #ffffff !important;
+}
+
+.spotify-profile-details span {
+  font-size: 12px !important;
+  color: rgba(255,255,255,0.5) !important;
+}
+
+.spotify-profile-details small {
+  font-size: 10px !important;
+  color: var(--spotify-green-bright) !important;
+  font-weight: 600 !important;
+}
+
+.spotify-profile-settings {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.spotify-profile-setting-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  padding: 10px 4px !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  font-size: 13px !important;
+}
+
+.spotify-profile-setting-row span {
+  color: rgba(255,255,255,0.6) !important;
+}
+
+.spotify-profile-setting-row strong {
+  color: #ffffff !important;
+}
+
+/* Make thumbnail artwork expand to fit its layout container in grids */
+.youtube-card-thumb .youtube-related-thumb,
+.youtube-shorts-thumb .youtube-related-thumb,
+.youtube-you-card .youtube-related-thumb {
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: inherit !important;
+  border-radius: inherit !important;
+}
+
+/* Let the inner image or fallback SVG scale appropriately */
+.youtube-card-thumb .youtube-related-thumb img,
+.youtube-shorts-thumb .youtube-related-thumb img,
+.youtube-you-card .youtube-related-thumb img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+/* Standardize avatar icon in video feed cards */
+.youtube-card-avatar {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  background: linear-gradient(135deg, #ff4b4b, #7637ff) !important;
+  color: #ffffff !important;
+  flex: 0 0 auto !important;
+  margin-top: 2px !important;
+}
+
+

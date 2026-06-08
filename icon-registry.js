@@ -146,6 +146,14 @@ ICONS["stop-square"] = '<rect x="4" y="4" width="16" height="16" rx="2"></rect>'
 ICONS["my-location"] = '<circle cx="12" cy="12" r="3"></circle><path d="M12 2v4"></path><path d="M12 18v4"></path><path d="M2 12h4"></path><path d="M18 12h4"></path>';
 ICONS["gnb-fan"] = '<circle cx="12" cy="12" r="1.8"></circle><path d="M12 3.5c3.7 1 5.1 3.1 3.6 5.5C14.5 10.8 12 12 12 12"></path><path d="M20.5 12c-1 3.7-3.1 5.1-5.5 3.6C13.2 14.5 12 12 12 12"></path><path d="M12 20.5c-3.7-1-5.1-3.1-3.6-5.5C9.5 13.2 12 12 12 12"></path><path d="M3.5 12c1-3.7 3.1-5.1 5.5-3.6C10.8 9.5 12 12 12 12"></path>';
 
+ICONS["home-outline"] = '<path d="M12 5.69l5 4.5V18h-2v-6H9v6H7v-7.81l5-4.5M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z"></path>';
+ICONS["search-outline"] = '<path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 0 0 1.48-5.34 6.5 6.5 0 1 0-1.85 4.88l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>';
+ICONS["library-outline"] = '<path d="M4 4c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v16c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2V4zm2 0v16h12V4H6zm3 2h2v12H9V6zm4 0h2v12h-2V6z"></path>';
+ICONS["profile-outline"] = '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0-6c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 8c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm-6 4c.22-.72 3.31-1.8 6-1.8 2.68 0 5.77 1.07 6 1.8H6z"></path>';
+ICONS["shorts-outline"] = '<path d="M10 15V9l5 3-5 3zm8.3-6.6a4 4 0 0 0-5.3-1.6l-1.7 1v1a1.2 1.2 0 0 1-.6 1.1c-.2.1-.4.2-.6.2a1.3 1.3 0 0 1-.8-.3l-.7-.4a4 4 0 0 0-5.6 1.6l-1.5 2.6a4 4 0 0 0 1.5 5.5l1.7 1v-1a1.2 1.2 0 0 1 .6-1.1c.2-.1.4-.2.6-.2a1.3 1.3 0 0 1 .8.3l.7.4a4 4 0 0 0 5.6-1.6l1.5-2.6a4 4 0 0 0-1.5-5.5l-.2-.1z"></path>';
+ICONS["subscriptions-outline"] = '<path d="M10 12.75v3.5l3-1.75-3-1.75zM18 3H6V1h12v2zm2 4H4V5h16v2zM2 11v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2zm18 0v9H4v-9h16z"></path>';
+
+
 
 export function svgIcon(name) {
   if (ICON_FILES[name]) {

@@ -140,7 +140,10 @@ let activeMediaItem = null;
 let mediaSearchResults = null;
 let mediaSearchLoading = false;
 let mediaSearchError = "";
+let spotifyActiveTab = "home";
+let youtubeActiveTab = "home";
 const RECENT_DOCK_LIMIT = 3;
+
 let recentDockApps = [];
 
 const FAVORITE_TILE_ITEMS = {
@@ -163,14 +166,70 @@ const FAVORITE_TILE_ITEMS = {
 };
 
 const MEDIA_CATALOG = [
-  { id: "m1", type: "music", title: "Drive Mix", creator: "Elysia Biro", description: "Electronic focus playlist" },
-  { id: "m2", type: "music", title: "Ditto", creator: "NewJeans", description: "K-pop essentials" },
-  { id: "m3", type: "music", title: "Seoul City Pop", creator: "Night Tempo", description: "Late-night Korean city pop" },
-  { id: "m4", type: "music", title: "Autonomous Lounge", creator: "Polestar Sound", description: "Ambient passenger mode" },
-  { id: "v1", type: "video", title: "Seoul night drive", creator: "Drive Lab", description: "4K city route video" },
-  { id: "v2", type: "video", title: "IONIQ cockpit walkthrough", creator: "HMI Studio", description: "Vehicle interface review" },
-  { id: "v3", type: "video", title: "Korea EV road trip", creator: "Charge Route", description: "Highway charging guide" },
-  { id: "v4", type: "video", title: "Relaxing dashboard visuals", creator: "Ambient Motion", description: "Passenger display loop" }
+  {
+    id: "m1",
+    type: "music",
+    title: "Drive Mix",
+    creator: "Elysia Biro",
+    description: "Electronic focus playlist",
+    imageUrl: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=240&auto=format&fit=crop&q=60"
+  },
+  {
+    id: "m2",
+    type: "music",
+    title: "Ditto",
+    creator: "NewJeans",
+    description: "K-pop essentials",
+    imageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=240&auto=format&fit=crop&q=60"
+  },
+  {
+    id: "m3",
+    type: "music",
+    title: "Seoul City Pop",
+    creator: "Night Tempo",
+    description: "Late-night Korean city pop",
+    imageUrl: "https://images.unsplash.com/photo-1506157786151-b8491531f063?w=240&auto=format&fit=crop&q=60"
+  },
+  {
+    id: "m4",
+    type: "music",
+    title: "Autonomous Lounge",
+    creator: "Polestar Sound",
+    description: "Ambient passenger mode",
+    imageUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=240&auto=format&fit=crop&q=60"
+  },
+  {
+    id: "v1",
+    type: "video",
+    title: "Seoul night drive",
+    creator: "Drive Lab",
+    description: "4K city route video",
+    imageUrl: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=480&auto=format&fit=crop&q=80"
+  },
+  {
+    id: "v2",
+    type: "video",
+    title: "IONIQ cockpit walkthrough",
+    creator: "HMI Studio",
+    description: "Vehicle interface review",
+    imageUrl: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=480&auto=format&fit=crop&q=80"
+  },
+  {
+    id: "v3",
+    type: "video",
+    title: "Korea EV road trip",
+    creator: "Charge Route",
+    description: "Highway charging guide",
+    imageUrl: "https://images.unsplash.com/photo-1563720223185-11003d516935?w=480&auto=format&fit=crop&q=80"
+  },
+  {
+    id: "v4",
+    type: "video",
+    title: "Relaxing dashboard visuals",
+    creator: "Ambient Motion",
+    description: "Passenger display loop",
+    imageUrl: "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=480&auto=format&fit=crop&q=80"
+  }
 ];
 
 const VEHICLE_SETTINGS = [
@@ -778,6 +837,104 @@ function renderSpotifyTabletPanel(meta, results, selected, fallback) {
   const musicRecommendations = MEDIA_CATALOG.filter((item) => item.type === "music" && !results.some((result) => result.id === item.id));
   const queueItems = [...results, ...musicRecommendations].slice(0, 5);
 
+  let mainContent = "";
+  if (spotifyActiveTab === "home") {
+    mainContent = `
+      <div class="spotify-chip-row" aria-hidden="true">
+        <span class="active">Music</span>
+        <span>Podcasts</span>
+        <span>Downloaded</span>
+      </div>
+      <div class="spotify-section-heading">
+        <strong>${mediaSearchQuery ? "Search results" : "Recommended for this drive"}</strong>
+        <span>${results.length ? `${results.length} tracks` : "Enter a keyword"}</span>
+      </div>
+      <div class="spotify-results-list" aria-live="polite">
+        ${renderSpotifyTabletRows(results, selectedItem, fallback)}
+      </div>
+    `;
+  } else if (spotifyActiveTab === "search") {
+    mainContent = `
+      <div class="spotify-search-tab">
+        <div class="spotify-section-heading">
+          <strong>Explore genres</strong>
+          <span>Browse all categories</span>
+        </div>
+        <div class="spotify-genre-grid">
+          <div class="spotify-genre-card pop"><span>Pop</span></div>
+          <div class="spotify-genre-card kpop"><span>K-Pop</span></div>
+          <div class="spotify-genre-card hiphop"><span>Hip-Hop</span></div>
+          <div class="spotify-genre-card rock"><span>Rock</span></div>
+          <div class="spotify-genre-card electronic"><span>Electronic</span></div>
+          <div class="spotify-genre-card chill"><span>Chill</span></div>
+        </div>
+      </div>
+    `;
+  } else if (spotifyActiveTab === "library") {
+    mainContent = `
+      <div class="spotify-library-tab">
+        <div class="spotify-section-heading">
+          <strong>Your Library</strong>
+          <span>Playlists and Albums</span>
+        </div>
+        <div class="spotify-library-list">
+          <div class="spotify-library-item">
+            <div class="spotify-library-art liked-songs">♥</div>
+            <div class="spotify-library-info">
+              <strong>Liked Songs</strong>
+              <span>Playlist · 128 tracks</span>
+            </div>
+          </div>
+          <div class="spotify-library-item">
+            <div class="spotify-library-art mix">Mix</div>
+            <div class="spotify-library-info">
+              <strong>Chill EV Drive Mix</strong>
+              <span>Playlist · HMI Studio</span>
+            </div>
+          </div>
+          <div class="spotify-library-item">
+            <div class="spotify-library-art album">AL</div>
+            <div class="spotify-library-info">
+              <strong>Midnight City Pop</strong>
+              <span>Album · Night Tempo</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (spotifyActiveTab === "profile") {
+    mainContent = `
+      <div class="spotify-profile-tab">
+        <div class="spotify-section-heading">
+          <strong>User Profile</strong>
+          <span>Connected Account</span>
+        </div>
+        <div class="spotify-profile-card">
+          <div class="spotify-profile-avatar">P</div>
+          <div class="spotify-profile-details">
+            <strong>PJY Driver</strong>
+            <span>pjy@connect-hmi.dev</span>
+            <small>Spotify Premium Member</small>
+          </div>
+        </div>
+        <div class="spotify-profile-settings">
+          <div class="spotify-profile-setting-row">
+            <span>Audio Quality</span>
+            <strong>Very High (320kbps)</strong>
+          </div>
+          <div class="spotify-profile-setting-row">
+            <span>Offline Storage</span>
+            <strong>2.4 GB used of 64 GB</strong>
+          </div>
+          <div class="spotify-profile-setting-row">
+            <span>Active Device</span>
+            <strong>Connect-L (HMI Audio)</strong>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   return `
     <section class="media-app-panel spotify-media-app spotify-tablet-app" aria-label="${meta.title}">
       <div class="landscape-drag-handle" aria-hidden="true"></div>
@@ -785,29 +942,18 @@ function renderSpotifyTabletPanel(meta, results, selected, fallback) {
         <span class="spotify-brand-icon media-tablet-logo" aria-hidden="true">${svgIcon("spotify")}</span>
         <form class="media-search-form media-tablet-search" id="mediaSearchForm">
           <input id="mediaSearchInput" type="search" value="${escapeHtml(mediaSearchQuery)}" placeholder="${meta.placeholder}" autocomplete="off" />
-          <button type="button" id="mediaSearchButton" aria-label="검색">${svgIcon("search")}</button>
+          <button type="button" id="mediaSearchButton" aria-label="검색">${svgIcon("search-outline")}</button>
         </form>
       </header>
       <section class="spotify-tablet-shell">
         <nav class="spotify-tablet-rail" aria-label="Spotify navigation">
-          <button type="button" class="active">${svgIcon("music")}<span>Home</span></button>
-          <button type="button">${svgIcon("search")}<span>Search</span></button>
-          <button type="button">${svgIcon("radio")}<span>Library</span></button>
-          <button type="button">${svgIcon("profile")}<span>Profile</span></button>
+          <button type="button" class="${spotifyActiveTab === "home" ? "active" : ""}" data-spotify-tab="home">${svgIcon("home-outline")}<span>Home</span></button>
+          <button type="button" class="${spotifyActiveTab === "search" ? "active" : ""}" data-spotify-tab="search">${svgIcon("search-outline")}<span>Search</span></button>
+          <button type="button" class="${spotifyActiveTab === "library" ? "active" : ""}" data-spotify-tab="library">${svgIcon("library-outline")}<span>Library</span></button>
+          <button type="button" class="${spotifyActiveTab === "profile" ? "active" : ""}" data-spotify-tab="profile">${svgIcon("profile-outline")}<span>Profile</span></button>
         </nav>
         <main class="spotify-browse-panel">
-          <div class="spotify-chip-row" aria-hidden="true">
-            <span class="active">Music</span>
-            <span>Podcasts</span>
-            <span>Downloaded</span>
-          </div>
-          <div class="spotify-section-heading">
-            <strong>${mediaSearchQuery ? "Search results" : "Recommended for this drive"}</strong>
-            <span>${results.length ? `${results.length} tracks` : "Enter a keyword"}</span>
-          </div>
-          <div class="spotify-results-list" aria-live="polite">
-            ${renderSpotifyTabletRows(results, selectedItem, fallback)}
-          </div>
+          ${mainContent}
         </main>
         <aside class="spotify-now-panel">
           <span class="spotify-now-kicker">Now Playing</span>
@@ -847,52 +993,205 @@ function renderSpotifyTabletPanel(meta, results, selected, fallback) {
 }
 
 function renderYouTubeTabletPanel(meta, results, selected, fallback) {
-  const selectedItem = selected || results[0] || null;
-  const videoRecommendations = MEDIA_CATALOG.filter((item) => item.type === "video" && !results.some((result) => result.id === item.id));
-  const relatedItems = [...results, ...videoRecommendations].slice(0, 8);
+  const isWatchMode = selectedMediaId !== null;
+  const selectedItem = isWatchMode ? (results.find((item) => item.id === selectedMediaId) || MEDIA_CATALOG.find((item) => item.id === selectedMediaId) || results[0]) : null;
+  
+  const videoRecommendations = MEDIA_CATALOG.filter((item) => item.type === "video" && (!selectedItem || selectedItem.id !== item.id));
+  const relatedItems = [...results.filter(item => !selectedItem || item.id !== selectedItem.id), ...videoRecommendations].slice(0, 8);
+
+  let mainContent = "";
+  if (isWatchMode && selectedItem) {
+    mainContent = `
+      <main class="youtube-watch-panel">
+        <button type="button" class="youtube-back-button" data-youtube-back aria-label="목록으로">
+          ${svgIcon("chevron-left")}<span>목록으로</span>
+        </button>
+        <section class="youtube-player-card">
+          ${mediaArtwork(selectedItem, "youtube-player-thumb", fallback, selectedItem.title)}
+          <div class="youtube-player-overlay" aria-hidden="true">
+            <button type="button">${svgIcon("play")}</button>
+            <div><i></i></div>
+            <span>0:00 / 12:48</span>
+          </div>
+        </section>
+        <section class="youtube-video-meta">
+          <h2>${escapeHtml(selectedItem.title)}</h2>
+          <div class="youtube-channel-row">
+            <span class="youtube-channel-avatar">${escapeHtml((selectedItem.creator || "Y").charAt(0))}</span>
+            <span><strong>${escapeHtml(selectedItem.creator || "YouTube")}</strong><small>128만 구독자</small></span>
+            <button type="button">구독</button>
+          </div>
+          <div class="youtube-action-row" aria-hidden="true">
+            <span>좋아요 2.4만</span>
+            <span>공유</span>
+            <span>저장</span>
+            <span>오프라인</span>
+          </div>
+          <p>${escapeHtml(selectedItem.description || "영상 상세 정보가 제공되지 않습니다.")}</p>
+        </section>
+      </main>
+    `;
+  } else {
+    // List Page
+    if (youtubeActiveTab === "home") {
+      mainContent = `
+        <main class="youtube-list-panel">
+          <div class="youtube-section-heading">
+            <strong>${mediaSearchQuery ? "Search results" : "Recommended Videos"}</strong>
+            <span>${results.length ? `${results.length} videos` : "Explore YouTube catalog"}</span>
+          </div>
+          <div class="youtube-grid">
+            ${results.map((item) => `
+              <div class="youtube-grid-card" data-media-id="${escapeHtml(item.id)}">
+                <div class="youtube-card-thumb">
+                  ${mediaArtwork(item, "youtube-related-thumb", fallback, item.title)}
+                </div>
+                <div class="youtube-card-info-row">
+                  <span class="youtube-card-avatar">${escapeHtml((item.creator || "Y").charAt(0))}</span>
+                  <div class="youtube-card-text">
+                    <strong>${escapeHtml(item.title)}</strong>
+                    <span>${escapeHtml(item.creator)} · 조회수 ${Math.max(12, item.title.length * 3)}만회</span>
+                  </div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </main>
+      `;
+    } else if (youtubeActiveTab === "shorts") {
+      const SHORTS_ITEMS = [
+        {
+          id: "v1",
+          title: "Testing autonomous parking! 🚗",
+          creator: "EV Tech",
+          views: "42만회",
+          imageUrl: "https://images.unsplash.com/photo-1506015391300-4802dc74de2e?w=360&auto=format&fit=crop&q=80"
+        },
+        {
+          id: "v2",
+          title: "NewJeans Ditto HMI Remix 🎶",
+          creator: "Music Lab",
+          views: "102만회",
+          imageUrl: "https://images.unsplash.com/photo-1487180142328-0c4e37023af5?w=360&auto=format&fit=crop&q=80"
+        },
+        {
+          id: "v3",
+          title: "Cockpit ambient lighting review",
+          creator: "Car Vibe",
+          views: "15만회",
+          imageUrl: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=360&auto=format&fit=crop&q=80"
+        },
+        {
+          id: "v4",
+          title: "EV charging in 10 seconds ⚡",
+          creator: "Charge Lab",
+          views: "73만회",
+          imageUrl: "https://images.unsplash.com/photo-1563720223523-491ff04651de?w=360&auto=format&fit=crop&q=80"
+        }
+      ];
+      mainContent = `
+        <main class="youtube-list-panel">
+          <div class="youtube-section-heading">
+            <strong>Shorts</strong>
+            <span>Trending vertical videos</span>
+          </div>
+          <div class="youtube-shorts-grid">
+            ${SHORTS_ITEMS.map((item) => `
+              <div class="youtube-shorts-card" data-media-id="${escapeHtml(item.id)}">
+                <div class="youtube-shorts-thumb">
+                  ${mediaArtwork(item, "youtube-related-thumb", fallback, item.title)}
+                  <div class="youtube-shorts-overlay">▶ ${item.views}</div>
+                </div>
+                <div class="youtube-shorts-info">
+                  <strong>${escapeHtml(item.title)}</strong>
+                  <span>${escapeHtml(item.creator)}</span>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </main>
+      `;
+    } else if (youtubeActiveTab === "subscriptions") {
+      mainContent = `
+        <main class="youtube-list-panel">
+          <div class="youtube-section-heading">
+            <strong>Subscriptions</strong>
+            <span>Latest from channels you subscribe to</span>
+          </div>
+          <div class="youtube-subs-header">
+            <div class="youtube-sub-channel"><span class="youtube-channel-avatar">D</span><span>Drive Lab</span></div>
+            <div class="youtube-sub-channel"><span class="youtube-channel-avatar">H</span><span>HMI Studio</span></div>
+            <div class="youtube-sub-channel"><span class="youtube-channel-avatar">C</span><span>Charge Route</span></div>
+            <div class="youtube-sub-channel"><span class="youtube-channel-avatar">A</span><span>Ambient Motion</span></div>
+          </div>
+          <div class="youtube-grid">
+            ${results.slice(0, 3).map((item) => `
+              <div class="youtube-grid-card" data-media-id="${escapeHtml(item.id)}">
+                <div class="youtube-card-thumb">
+                  ${mediaArtwork(item, "youtube-related-thumb", fallback, item.title)}
+                </div>
+                <div class="youtube-card-info-row">
+                  <span class="youtube-card-avatar">${escapeHtml((item.creator || "Y").charAt(0))}</span>
+                  <div class="youtube-card-text">
+                    <strong>${escapeHtml(item.title)}</strong>
+                    <span>${escapeHtml(item.creator)} · 조회수 ${Math.max(12, item.title.length * 3)}만회</span>
+                  </div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </main>
+      `;
+    } else if (youtubeActiveTab === "you") {
+      mainContent = `
+        <main class="youtube-list-panel">
+          <div class="youtube-section-heading">
+            <strong>You</strong>
+            <span>Your dashboard</span>
+          </div>
+          <div class="youtube-you-profile">
+            <span class="youtube-channel-avatar large">P</span>
+            <div class="youtube-you-info">
+              <h2>PJY Driver</h2>
+              <span>pjy@connect-ev.com · 구독 채널 12개</span>
+            </div>
+          </div>
+          <div class="youtube-you-section">
+            <h3>History</h3>
+            <div class="youtube-you-grid">
+              ${results.slice(0, 2).map((item) => `
+                <div class="youtube-you-card" data-media-id="${escapeHtml(item.id)}">
+                  <div class="youtube-card-thumb mini">
+                    ${mediaArtwork(item, "youtube-related-thumb", fallback, item.title)}
+                  </div>
+                  <strong>${escapeHtml(item.title)}</strong>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        </main>
+      `;
+    }
+  }
 
   return `
-    <section class="media-app-panel youtube-media-app youtube-tablet-app" aria-label="${meta.title}">
+    <section class="media-app-panel youtube-media-app youtube-tablet-app${isWatchMode ? " watch-mode" : " list-mode"}" aria-label="${meta.title}">
       <div class="landscape-drag-handle" aria-hidden="true"></div>
       <header class="media-tablet-topbar youtube-topbar">
         <span class="youtube-brand-icon media-tablet-logo" aria-hidden="true">${svgIcon("youtube")}</span>
         <form class="media-search-form media-tablet-search" id="mediaSearchForm">
           <input id="mediaSearchInput" type="search" value="${escapeHtml(mediaSearchQuery)}" placeholder="${meta.placeholder}" autocomplete="off" />
-          <button type="button" id="mediaSearchButton" aria-label="검색">${svgIcon("search")}</button>
+          <button type="button" id="mediaSearchButton" aria-label="검색">${svgIcon("search-outline")}</button>
         </form>
       </header>
       <section class="youtube-tablet-shell">
         <nav class="youtube-tablet-rail" aria-label="YouTube navigation">
-          <button type="button" class="active">${svgIcon("home")}<span>Home</span></button>
-          <button type="button">${svgIcon("youtube")}<span>Shorts</span></button>
-          <button type="button">${svgIcon("radio")}<span>Subscriptions</span></button>
-          <button type="button">${svgIcon("profile")}<span>You</span></button>
+          <button type="button" class="${youtubeActiveTab === "home" ? "active" : ""}" data-youtube-tab="home">${svgIcon("home-outline")}<span>Home</span></button>
+          <button type="button" class="${youtubeActiveTab === "shorts" ? "active" : ""}" data-youtube-tab="shorts">${svgIcon("shorts-outline")}<span>Shorts</span></button>
+          <button type="button" class="${youtubeActiveTab === "subscriptions" ? "active" : ""}" data-youtube-tab="subscriptions">${svgIcon("subscriptions-outline")}<span>Subscriptions</span></button>
+          <button type="button" class="${youtubeActiveTab === "you" ? "active" : ""}" data-youtube-tab="you">${svgIcon("profile-outline")}<span>You</span></button>
         </nav>
-        <main class="youtube-watch-panel">
-          <section class="youtube-player-card">
-            ${mediaArtwork(selectedItem, "youtube-player-thumb", fallback, selectedItem?.title || meta.empty)}
-            <div class="youtube-player-overlay" aria-hidden="true">
-              <button type="button">${svgIcon("play")}</button>
-              <div><i></i></div>
-              <span>0:00 / 12:48</span>
-            </div>
-          </section>
-          <section class="youtube-video-meta">
-            <h2>${escapeHtml(selectedItem?.title || meta.empty)}</h2>
-            <div class="youtube-channel-row">
-              <span class="youtube-channel-avatar">${escapeHtml((selectedItem?.creator || "Y").charAt(0))}</span>
-              <span><strong>${escapeHtml(selectedItem?.creator || "YouTube")}</strong><small>128만 구독자</small></span>
-              <button type="button">구독</button>
-            </div>
-            <div class="youtube-action-row" aria-hidden="true">
-              <span>좋아요 2.4만</span>
-              <span>공유</span>
-              <span>저장</span>
-              <span>오프라인</span>
-            </div>
-            <p>${escapeHtml(selectedItem?.description || "검색 결과를 선택하면 영상 상세 화면이 표시됩니다.")}</p>
-          </section>
-        </main>
+        ${mainContent}
         <aside class="youtube-related-panel">
           <div class="youtube-filter-row" aria-hidden="true">
             <span class="active">All</span><span>Music</span><span>Recently uploaded</span>
@@ -1113,6 +1412,8 @@ function resetMediaAppState() {
   mediaSearchResults = null;
   mediaSearchLoading = false;
   mediaSearchError = "";
+  spotifyActiveTab = "home";
+  youtubeActiveTab = "home";
   shortcutGrid.classList.remove("media-landscape-host");
   appsLayer.classList.remove("media-app-open");
 }
@@ -1139,7 +1440,10 @@ function openLandscapeMediaApp(id) {
   mediaSearchResults = null;
   mediaSearchLoading = false;
   mediaSearchError = "";
+  spotifyActiveTab = "home";
+  youtubeActiveTab = "home";
   renderMediaApp();
+
 }
 
 // ===== Radio App State & Controllers =====
@@ -1706,6 +2010,27 @@ function renderMediaApp() {
       renderMediaApp();
     });
   });
+
+  host.querySelectorAll("[data-spotify-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      spotifyActiveTab = button.dataset.spotifyTab;
+      renderMediaApp();
+    });
+  });
+
+  host.querySelectorAll("[data-youtube-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      youtubeActiveTab = button.dataset.youtubeTab;
+      selectedMediaId = null;
+      renderMediaApp();
+    });
+  });
+
+  host.querySelector("[data-youtube-back]")?.addEventListener("click", () => {
+    selectedMediaId = null;
+    renderMediaApp();
+  });
+
 
   host.querySelector(".media-play-button")?.addEventListener("click", () => {
     if (selected) {
