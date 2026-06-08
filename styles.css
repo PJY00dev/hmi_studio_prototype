@@ -3773,37 +3773,42 @@ svg.gnb-apps-icon {
 .media-tablet-topbar {
   min-height: 70px;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: 92px minmax(0, 1fr) !important;
   align-items: center;
-  gap: 20px;
-  padding: 18px 8px 0;
+  gap: 22px !important;
+  padding: 18px 0 0 0 !important;
 }
 
 .media-tablet-logo {
   flex-shrink: 0;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 80px !important;
+  height: 76px !important;
+  margin-left: 6px !important;
+  box-sizing: border-box !important;
 }
 
 .spotify-tablet-app .media-tablet-logo {
-  width: 46px;
-  height: 46px;
   filter: none;
 }
 
+.spotify-tablet-app .media-tablet-logo svg,
+.youtube-tablet-app .media-tablet-logo svg {
+  width: 46px !important;
+  height: 46px !important;
+  flex-shrink: 0 !important;
+}
+
 .youtube-tablet-app .media-tablet-logo {
-  width: 46px;
-  height: 46px;
   border-radius: 10px;
   background: transparent;
   box-shadow: none;
 }
 
-.youtube-tablet-app .media-tablet-logo svg {
-  width: 46px;
-  height: 46px;
-}
-
 .media-tablet-search {
-  width: 100%;
+  width: auto !important;
   max-width: none;
   justify-self: stretch;
 }
@@ -3811,11 +3816,13 @@ svg.gnb-apps-icon {
 .spotify-tablet-app .media-tablet-search {
   grid-template-columns: minmax(0, 1fr) 64px;
   gap: 12px;
+  margin-left: 24px !important;
 }
 
 .youtube-tablet-app .media-tablet-search {
   grid-template-columns: minmax(0, 1fr) 64px !important;
   gap: 12px !important;
+  margin-left: 20px !important;
 }
 
 .media-tablet-search input {
@@ -4119,7 +4126,7 @@ svg.gnb-apps-icon {
 }
 
 .spotify-now-art {
-  width: min(100%, 200px);
+  width: min(100%, 260px);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -4148,7 +4155,7 @@ svg.gnb-apps-icon {
   color: #ffffff;
   font-size: var(--type-title-medium-size);
   line-height: var(--type-title-medium-line-height);
-  font-weight: var(--type-weight-Extra_strong);
+  font-weight: var(--type-weight-Strong);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4159,7 +4166,7 @@ svg.gnb-apps-icon {
   color: var(--spotify-muted);
   font-size: var(--type-label-small-size);
   line-height: var(--type-label-small-line-height);
-  font-weight: var(--type-weight-Strong);
+  font-weight: var(--type-weight-Normal);
 }
 
 .spotify-now-controls {
@@ -4181,12 +4188,24 @@ svg.gnb-apps-icon {
   font-weight: var(--type-weight-Extra_strong);
 }
 
+.spotify-now-controls button svg {
+  width: 20px !important;
+  height: 20px !important;
+  fill: currentColor !important;
+}
+
 .spotify-now-controls button.primary {
   width: 60px;
   height: 60px;
   background: #ffffff;
   color: #050505;
   font-size: var(--type-title-small-size);
+}
+
+.spotify-now-controls button.primary svg {
+  width: 24px !important;
+  height: 24px !important;
+  fill: currentColor !important;
 }
 
 .spotify-device-pill {

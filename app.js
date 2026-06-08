@@ -835,7 +835,7 @@ function renderSpotifyTabletRows(results, selected, fallback) {
 function renderSpotifyTabletPanel(meta, results, selected, fallback) {
   const selectedItem = selected || results[0] || null;
   const musicRecommendations = MEDIA_CATALOG.filter((item) => item.type === "music" && !results.some((result) => result.id === item.id));
-  const queueItems = [...results, ...musicRecommendations].slice(0, 5);
+  const queueItems = [...results.filter(item => !selectedItem || item.id !== selectedItem.id), ...musicRecommendations].slice(0, 5);
 
   let mainContent = "";
   if (spotifyActiveTab === "home") {
@@ -956,7 +956,6 @@ function renderSpotifyTabletPanel(meta, results, selected, fallback) {
           ${mainContent}
         </main>
         <aside class="spotify-now-panel">
-          <span class="spotify-now-kicker">Now Playing</span>
           ${mediaArtwork(selectedItem, "spotify-now-art", fallback, selectedItem?.title || meta.empty)}
           <div class="spotify-now-copy">
             <strong>${escapeHtml(selectedItem?.title || meta.empty)}</strong>
@@ -969,13 +968,9 @@ function renderSpotifyTabletPanel(meta, results, selected, fallback) {
             <span>3:24</span>
           </div>
           <div class="spotify-now-controls" aria-hidden="true">
-            <button type="button">‹‹</button>
-            <button type="button" class="primary">Ⅱ</button>
-            <button type="button">››</button>
-          </div>
-          <div class="spotify-device-pill" aria-hidden="true">
-            <span></span>
-            Playing on Connect-L
+            <button type="button" id="spotifyPrevBtn">${svgIcon("prev")}</button>
+            <button type="button" class="primary" id="spotifyPlayPauseBtn">${svgIcon("pause")}</button>
+            <button type="button" id="spotifyNextBtn">${svgIcon("next")}</button>
           </div>
           <div class="spotify-queue">
             <strong>Up next</strong>

@@ -153,6 +153,11 @@ ICONS["profile-outline"] = '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79
 ICONS["shorts-outline"] = '<path d="M10 15V9l5 3-5 3zm8.3-6.6a4 4 0 0 0-5.3-1.6l-1.7 1v1a1.2 1.2 0 0 1-.6 1.1c-.2.1-.4.2-.6.2a1.3 1.3 0 0 1-.8-.3l-.7-.4a4 4 0 0 0-5.6 1.6l-1.5 2.6a4 4 0 0 0 1.5 5.5l1.7 1v-1a1.2 1.2 0 0 1 .6-1.1c.2-.1.4-.2.6-.2a1.3 1.3 0 0 1 .8.3l.7.4a4 4 0 0 0 5.6-1.6l1.5-2.6a4 4 0 0 0-1.5-5.5l-.2-.1z"></path>';
 ICONS["subscriptions-outline"] = '<path d="M10 12.75v3.5l3-1.75-3-1.75zM18 3H6V1h12v2zm2 4H4V5h16v2zM2 11v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2zm18 0v9H4v-9h16z"></path>';
 
+ICONS["play"] = '<path d="M8 5v14l11-7z"></path>';
+ICONS["pause"] = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path>';
+ICONS["prev"] = '<path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"></path>';
+ICONS["next"] = '<path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path>';
+
 
 
 export function svgIcon(name) {
