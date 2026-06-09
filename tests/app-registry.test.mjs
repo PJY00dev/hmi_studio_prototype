@@ -20,7 +20,7 @@ test("derives launcher, edit, settings, and media app data from one app registry
   assert.deepEqual(ALL_APPS.map((app) => app.appId), launcherIds);
   assert.deepEqual(EDIT_APPS, launcherIds);
   assert.deepEqual(APP_SETTING_APPS.map((app) => app.id), settingsIds);
-  assert.deepEqual(Object.keys(MEDIA_APP_META), ["youtube", "spotify"]);
+  assert.deepEqual(Object.keys(MEDIA_APP_META), ["youtube", "spotify", "netflix"]);
 });
 
 test("uses the same icon, title, and color metadata for shared app surfaces", () => {

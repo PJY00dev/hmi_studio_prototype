@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vehicle HMI Prototype</title>
-    <link rel="stylesheet" href="./styles.css?v=143" />
+    <link rel="stylesheet" href="./styles.css?v=145" />
   </head>
   <body>
     <script>
@@ -25,7 +25,6 @@
               <span class="status-gear">D</span>
               <span class="status-energy">
                 <span class="range-val">500Km</span>
-                <span class="status-charge-icon" data-static-icon="status-charger" title="Charging connector"></span>
                 <span class="status-battery-outline" title="Battery 80%" aria-label="Battery 80%">
                   <span class="status-battery-svg" data-static-icon="status-battery-80"></span>
                 </span>
@@ -636,13 +635,13 @@
           <section class="edit-layer" id="editLayer" aria-label="Home edit mode" hidden>
             <div class="edit-left">
               <p class="edit-help">
-                Drag an app into the widget you want to customise.<br />
-                You can also rearrange the widgets order by dragging a widget.
+                앱을 드래그하여 위젯을 변경할 수 있습니다.<br />
+                위젯을 드래그하면 순서가 변경됩니다.
               </p>
               <div class="app-palette" id="appPalette"></div>
               <div class="edit-actions">
-                <button type="button" id="cancelEdit">Cancel</button>
-                <button type="button" id="saveEdit" disabled>Save</button>
+                <button type="button" id="cancelEdit">취소</button>
+                <button type="button" id="saveEdit" disabled>저장</button>
               </div>
             </div>
 

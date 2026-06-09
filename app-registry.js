@@ -103,6 +103,19 @@ export const APP_REGISTRY = [
     }
   },
   {
+    id: "netflix",
+    title: "Netflix",
+    icon: "netflix",
+    color: "#000000",
+    desc: "Netflix 드라마 및 영화 감상",
+    surfaces: { launcher: true, edit: true },
+    media: {
+      type: "netflix",
+      placeholder: "드라마, 영화, 시리즈 검색",
+      empty: "검색된 콘텐츠가 없습니다."
+    }
+  },
+  {
     id: "app-market",
     title: "앱 마켓",
     icon: "app-market",

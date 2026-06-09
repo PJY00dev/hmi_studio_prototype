@@ -142,9 +142,14 @@ let mediaSearchLoading = false;
 let mediaSearchError = "";
 let spotifyActiveTab = "home";
 let youtubeActiveTab = "home";
+let netflixActiveTab = "home";
+let netflixSubTab = "all";
+let netflixPlaying = false;
+let netflixMyList = ["netflix-mylist-0", "netflix-mylist-1", "netflix-mylist-6", "netflix-mylist-7"];
 const RECENT_DOCK_LIMIT = 3;
 
 let recentDockApps = [];
+let bouncingAppId = null;
 
 const FAVORITE_TILE_ITEMS = {
   "favorite-shortcuts": [
@@ -229,6 +234,869 @@ const MEDIA_CATALOG = [
     creator: "Ambient Motion",
     description: "Passenger display loop",
     imageUrl: "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=480&auto=format&fit=crop&q=80"
+  },
+  {
+    id: "netflix-picked-0",
+    type: "netflix",
+    title: "참교육",
+    creator: "네이버웹툰 / 스튜디오 LICO",
+    description: "선 넘는 학생들과 방관하는 교사들. 붕괴된 교권을 바로잡기 위해 교육부 산하 교권보호국 소속 나화진의 참교육이 시작된다.",
+    imageUrl: "./assets/netflix/img1_row1_col0.jpg",
+    category: "TV-Shows",
+    genre: "K-웹툰 / 액션 / 학원물",
+    rating: "18+",
+    duration: "최신 등록",
+    badge: "최신 등록"
+  },
+  {
+    id: "netflix-picked-1",
+    type: "netflix",
+    title: "유재석 캠프★프",
+    creator: "유재석 / 안테나",
+    description: "유재석과 함께 떠나는 힐링 캠프. 특별한 게스트들과 나누는 깊은 이야기와 유쾌한 웃음의 순간들.",
+    imageUrl: "./assets/netflix/img1_row1_col1.jpg",
+    category: "TV-Shows",
+    genre: "K-예능 / 리얼리티 / 토크",
+    rating: "15+",
+    duration: "신규 에피소드",
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-picked-2",
+    type: "netflix",
+    title: "모두가 자신의 무가치함과 싸우고 있다",
+    creator: "힐링 다큐멘터리",
+    description: "마음의 상처를 치유하기 위한 여정. 현대인들이 겪는 내면의 갈등과 극복 스토리를 조명한다.",
+    imageUrl: "./assets/netflix/img1_row1_col2.jpg",
+    category: "TV-Shows",
+    genre: "다큐멘터리 / 사회 / 힐링",
+    rating: "15+",
+    duration: "신규 에피소드",
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-picked-3",
+    type: "netflix",
+    title: "사냥개들",
+    creator: "우도환, 이상이, 허준호",
+    description: "돈을 쫓아 사채업의 세계에 발을 들인 두 청년이 거대한 악의 세력에 맞서 목숨 걸고 싸우는 액션 드라마.",
+    imageUrl: "./assets/netflix/img1_row1_col3.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 범죄 / 액션 / 스릴러",
+    rating: "18+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-picked-4",
+    type: "netflix",
+    title: "사이버펑크: 엣지러너",
+    creator: "TRIGGER / CD PROJEKT RED",
+    description: "기술과 신체 개조가 지배하는 디스토피아 미래 도시 나이트 시티에서 모든 것을 잃은 소년이 스트리트 키드 '엣지러너'가 되기로 결심한다.",
+    imageUrl: "./assets/netflix/img1_row1_col4.jpg",
+    category: "TV-Shows",
+    genre: "애니메이션 / SF / 사이버펑크 / 액션",
+    rating: "18+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-picked-5",
+    type: "netflix",
+    title: "냉장고를 부탁해",
+    creator: "김성주, 안정환 및 셰프 군단",
+    description: "최고의 셰프들이 게스트의 냉장고 속 재료만을 사용해 15분 만에 기적 같은 요리를 선보이는 쿡방 예능.",
+    imageUrl: "./assets/netflix/img1_row1_col5.jpg",
+    category: "TV-Shows",
+    genre: "K-예능 / 요리 / 토크쇼",
+    rating: "12+",
+    duration: "신규 에피소드",
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-picked-6",
+    type: "netflix",
+    title: "멋진 신세계",
+    creator: "올더스 헉슬리 원작 드라마",
+    description: "완벽하게 통제된 유토피아 사회. 그 속에서 인간적 감정을 깨달은 이들이 겪는 갈등과 파멸의 서사.",
+    imageUrl: "./assets/netflix/img1_row1_col6.jpg",
+    category: "TV-Shows",
+    genre: "SF / 디스토피아 / 미스터리",
+    rating: "18+",
+    duration: "신규 에피소드",
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-picked-7",
+    type: "netflix",
+    title: "주술회전 사멸회유",
+    creator: "MAPPA / 아쿠타미 게게",
+    description: "미증유의 주술 전투 '사멸회유'가 개막된다. 주술사들의 목숨을 건 데스게임이 펼쳐지는 본격 다크 판타지 애니메이션.",
+    imageUrl: "./assets/netflix/img1_row1_col7.jpg",
+    category: "TV-Shows",
+    genre: "애니메이션 / 다크 판타지 / 액션",
+    rating: "18+",
+    duration: "최신 등록"
+  },
+  {
+    id: "netflix-kdrama-0",
+    type: "netflix",
+    title: "슬기로운 의사생활",
+    creator: "신원호 감독 / 조정석, 유연석, 정경호",
+    description: "누군가는 태어나고 누군가는 삶을 끝내는, 인생의 축소판이라 불리는 병원에서 평범한 듯 특별한 하루하루를 살아가는 20년 지기 친구들의 케미스토리.",
+    imageUrl: "./assets/netflix/img1_row2_col0.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 메디컬 / 휴먼 / 라이프",
+    rating: "15+",
+    duration: "시즌 2개",
+    episodes: [
+      { title: "1화: 무궁화 꽃이 피던 날", duration: "60분", description: "병원에서 매일 사투를 벌이는 다섯 명의 동기 의사들이 20년 전 밴드를 다시 모아 연습을 시작한다.", thumbnail: "./assets/netflix/img1_row2_col0.jpg" }
+    ]
+  },
+  {
+    id: "netflix-kdrama-1",
+    type: "netflix",
+    title: "이 사람 통역 되나요?",
+    creator: "로맨틱 코미디",
+    description: "언어 장벽을 넘어 소통하는 번역가와 톱스타 사이에서 벌어지는 좌충우돌 로맨틱 러브스토리.",
+    imageUrl: "./assets/netflix/img1_row2_col1.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 로맨스 / 코미디",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-kdrama-2",
+    type: "netflix",
+    title: "이상한 변호사 우영우",
+    creator: "박은빈, 강태오, 강기영",
+    description: "천재적인 두뇌와 자폐스펙트럼을 동시에 가진 신입 변호사 우영우의 대형 로펌 생존기.",
+    imageUrl: "./assets/netflix/img1_row2_col2.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 법정 / 휴먼 / 코미디",
+    rating: "12+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-kdrama-3",
+    type: "netflix",
+    title: "그해 우리는",
+    creator: "최우식, 김다미, 김성철",
+    description: "함께해서 더러웠고 다신 보지 말자!로 끝났어야 할 인연이 10년 뒤 고등학교 시절 촬영한 다큐멘터리의 역주행으로 인해 강제 소환되면서 펼쳐지는 로맨스.",
+    imageUrl: "./assets/netflix/img1_row2_col3.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 청춘 / 로맨스 / 멜로",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-kdrama-4",
+    type: "netflix",
+    title: "D.P.",
+    creator: "정해인, 구교환, 김성균",
+    description: "탈영병들을 잡는 군무 이탈 체포조(D.P.) 준호와 호열이 다양한 사연을 가진 이들을 쫓으며 미처 알지 못했던 현실을 마주하는 이야기.",
+    imageUrl: "./assets/netflix/img1_row2_col4.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 군대 / 밀리터리 / 드라마",
+    rating: "18+",
+    duration: "시즌 2개"
+  },
+  {
+    id: "netflix-kdrama-5",
+    type: "netflix",
+    title: "은중과 상연",
+    creator: "김고은, 박지현",
+    description: "초등학생 시절부터 절친이었던 두 여자가 자라나며 겪는 우정, 질투, 그리고 애틋한 연대를 다룬 섬세한 감성 드라마.",
+    imageUrl: "./assets/netflix/img1_row2_col5.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 휴먼 / 워맨스",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-kdrama-6",
+    type: "netflix",
+    title: "폭싹 속았수다",
+    creator: "아이유, 박보검",
+    description: "1950년대 제주에서 태어난 '요망진 반항아' 애순이와 '팔불출 무쇠' 관식이의 모험 가득한 일생을 사계절로 풀어낸 헌사 같은 드라마.",
+    imageUrl: "./assets/netflix/img1_row2_col6.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 시대극 / 청춘 / 로맨스",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-kdrama-7",
+    type: "netflix",
+    title: "멋진 신세계 (K)",
+    creator: "오리지널 드라마",
+    description: "새로운 가치관과 질서 속에서 살아가는 젊은 세대들의 사랑과 갈등을 담은 K-오리지널 드라마.",
+    imageUrl: "./assets/netflix/img1_row2_col7.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 미스터리 / 로맨스",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-anime-0",
+    type: "netflix",
+    title: "진격의 거인 The Final Season",
+    creator: "MAPPA / 이사야마 하지메",
+    description: "벽 너머의 진실이 마침내 밝혀지고, 인류와 거인의 마지막 결전이 치달아간다. 에렌 예거의 종말을 향한 걸음과 그를 막으려는 동료들의 혈투.",
+    imageUrl: "./assets/netflix/img1_row3_col0.jpg",
+    category: "TV-Shows",
+    genre: "애니메이션 / 액션 / 다크 판타지",
+    rating: "18+",
+    duration: "시즌 4개"
+  },
+  {
+    id: "netflix-anime-1",
+    type: "netflix",
+    title: "주술회전",
+    creator: "MAPPA / 아쿠타미 게게",
+    description: "경이로운 신체 능력을 가진 고등학생 이타도리 유지가 저주에 걸린 손가락을 먹은 후 주술 고등학교에 입학하며 벌어지는 이능 액션 판타지.",
+    imageUrl: "./assets/netflix/img1_row3_col1.jpg",
+    category: "TV-Shows",
+    genre: "애니메이션 / 액션 / 주술 / 다크 판타지",
+    rating: "18+",
+    duration: "시즌 2개"
+  },
+  {
+    id: "netflix-anime-2",
+    type: "netflix",
+    title: "헌터x헌터 (Hunter x Hunter)",
+    creator: "토가시 요시히로",
+    description: "아버지를 찾기 위해 헌터가 되기로 결심한 소년 곤과 개성 넘치는 동료들이 다양한 시험과 미지의 세계를 모험하는 정통 판타지 애니메이션.",
+    imageUrl: "./assets/netflix/img1_row3_col2.jpg",
+    category: "TV-Shows",
+    genre: "애니메이션 / 모험 / 정통 판타지 / 액션",
+    rating: "15+",
+    duration: "시즌 6개"
+  },
+  {
+    id: "netflix-anime-3",
+    type: "netflix",
+    title: "장송의 프리렌",
+    creator: "매드하우스",
+    description: "마왕을 물리친 용사 일행의 마법사 프리렌. 수명이 아주 긴 엘프인 그녀가 동료들의 죽음 이후 인간을 알아가기 위해 떠나는 따뜻하고 잔잔한 마법 여정.",
+    imageUrl: "./assets/netflix/img1_row3_col3.jpg",
+    category: "TV-Shows",
+    genre: "애니메이션 / 판타지 / 힐링 / 모험",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-anime-4",
+    type: "netflix",
+    title: "귀멸의 칼날",
+    creator: "유포터블 / 고토게 코요하루",
+    description: "혈귀에게 가족을 잃고 유일하게 살아남았으나 혈귀가 된 여동생 네즈코를 다시 인간으로 되돌리기 위해 검사 '귀살대'가 된 탄지로의 처절한 사투.",
+    imageUrl: "./assets/netflix/img1_row3_col4.jpg",
+    category: "TV-Shows",
+    genre: "애니메이션 / 시대극 / 액션 / 다크 판타지",
+    rating: "18+",
+    duration: "시즌 4개"
+  },
+  {
+    id: "netflix-anime-5",
+    type: "netflix",
+    title: "나 혼자만 레벨업",
+    creator: "A-1 Pictures / 추공 원작",
+    description: "인류 최약병기로 불리던 E급 헌터 성진우가 의문의 던전에서 살아남은 후, 자신에게만 보이는 퀘스트 창을 통해 끊임없이 성장하며 레벨업하는 액션 판타지.",
+    imageUrl: "./assets/netflix/img1_row3_col5.jpg",
+    category: "TV-Shows",
+    genre: "애니메이션 / 현대 판타지 / 액션 / 먼치킨",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-anime-6",
+    type: "netflix",
+    title: "향기로운 꽃은 흐드러지게 핀다",
+    creator: "로맨스 애니메이션",
+    description: "이웃해 있는 앙숙 학교의 두 남녀가 우연히 빵집에서 만나 비밀스럽게 교류하며 자라나는 풋풋하고 따뜻한 청춘 학원 로맨스.",
+    imageUrl: "./assets/netflix/img1_row3_col6.jpg",
+    category: "TV-Shows",
+    genre: "애니메이션 / 청춘 / 학원물 / 로맨스",
+    rating: "12+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-anime-7",
+    type: "netflix",
+    title: "사이버펑크: 엣지러너 (A)",
+    creator: "TRIGGER",
+    description: "나이트 시티의 가혹한 현실 속에서 살아남기 위해 자신을 메카쿠시한 데이비드의 질주하는 인생과 우정의 SF 대작.",
+    imageUrl: "./assets/netflix/img1_row3_col7.jpg",
+    category: "TV-Shows",
+    genre: "애니메이션 / SF / 액션",
+    rating: "18+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-mylist-0",
+    type: "netflix",
+    title: "슬기로운 의사생활",
+    creator: "신원호 감독",
+    description: "인생의 희로애락이 공존하는 병원에서 보낸 20년 지기 의사 친구들의 일상을 그린 따뜻한 인간미 가득한 드라마.",
+    imageUrl: "./assets/netflix/img2_row1_col0.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 메디컬 / 라이프",
+    rating: "15+",
+    duration: "시즌 2개"
+  },
+  {
+    id: "netflix-mylist-1",
+    type: "netflix",
+    title: "D.P. (디피)",
+    creator: "한준희 감독 / 정해인, 구교환",
+    description: "헌병대 소속 군무 이탈 체포조 준호와 호열이 탈영병들을 쫓으며 직면하게 되는 안타까운 진실들의 추적기.",
+    imageUrl: "./assets/netflix/img2_row1_col1.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 밀리터리 / 범죄 / 드라마",
+    rating: "18+",
+    duration: "시즌 2개"
+  },
+  {
+    id: "netflix-mylist-2",
+    type: "netflix",
+    title: "나의 해방일지",
+    creator: "박해영 작가 / 이민기, 김지원, 손석구",
+    description: "견딜 수 없이 답답한 경기도 삼남매의 해방기. 외딴 마을에 굴러들어 온 정체불명의 외지인 구씨와 그들이 그리는 힐링 휴먼 드라마.",
+    imageUrl: "./assets/netflix/img2_row1_col2.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 라이프 / 힐링 / 멜로",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-mylist-3",
+    type: "netflix",
+    title: "브레이킹 배드",
+    creator: "빈스 길리건 / 브라이언 크랜스톤",
+    description: "시한부 판정을 받은 평범한 고등학교 화학 교사가 가족에게 재산을 남기기 위해 전 제자와 마약 사업에 손대며 괴물로 변해간다.",
+    imageUrl: "./assets/netflix/img2_row1_col3.jpg",
+    category: "TV-Shows",
+    genre: "드라마 / 범죄 / 스릴러",
+    rating: "18+",
+    duration: "시즌 5개"
+  },
+  {
+    id: "netflix-mylist-4",
+    type: "netflix",
+    title: "그해 우리는 (M)",
+    creator: "청춘 로맨스",
+    description: "다큐멘터리 역주행으로 얽힌 헤어진 옛 연인의 티격태격 감정 재점화 청춘 로맨스.",
+    imageUrl: "./assets/netflix/img2_row1_col4.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 로맨스 / 청춘",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-mylist-5",
+    type: "netflix",
+    title: "중증외상센터",
+    creator: "메디컬 스릴러",
+    description: "사명감 하나로 죽어가는 환자를 살려내는 중증외상센터 의료진의 긴박하고 치열한 응급 구명 투쟁 드라마.",
+    imageUrl: "./assets/netflix/img2_row1_col5.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 메디컬 / 휴먼",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-mylist-6",
+    type: "netflix",
+    title: "미스터 션샤인",
+    creator: "김은숙 작가 / 이병헌, 김태리",
+    description: "신미양요 때 군함에 승선해 미국에 떨어진 소년이 미국 군인 신분으로 조국인 조선에 돌아와 주둔하며 벌어지는 구한말 격동의 서사.",
+    imageUrl: "./assets/netflix/img2_row1_col6.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 역사 / 로맨스 / 시대극",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-mylist-7",
+    type: "netflix",
+    title: "킹덤",
+    creator: "김은희 작가 / 주지훈, 배두나, 류승룡",
+    description: "병든 왕을 둘러싼 불길한 소문 속에 조선을 뒤덮은 괴질의 원인을 찾아 세자 창이 어둠 속에 숨겨진 굶주린 이들과 사투를 벌이는 미스터리 스릴러.",
+    imageUrl: "./assets/netflix/img2_row1_col7.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 좀비 / 미스터리 / 사극",
+    rating: "18+",
+    duration: "시즌 2개"
+  },
+  {
+    id: "netflix-reality-0",
+    type: "netflix",
+    title: "흑백요리사: 요리 계급 전쟁",
+    creator: "백종원, 안성재 심사위원",
+    description: "최고의 맛을 찾아 떠나는 치열한 대결. 재야의 숨은 요리 고수 '흑수저'들이 대한민국 스타 셰프 '백수저'들에게 도전한다.",
+    imageUrl: "./assets/netflix/img2_row2_col0.jpg",
+    category: "TV-Shows",
+    genre: "K-예능 / 서바이벌 / 요리",
+    rating: "12+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-reality-1",
+    type: "netflix",
+    title: "연애기숙학교 돌싱글즈",
+    creator: "K-연애 예능",
+    description: "한 번 다녀온 돌싱 남녀들이 모여 서로의 아픔을 공유하고 새로운 사랑을 싹틔우는 본격 리얼 연애 서바이벌 예능.",
+    imageUrl: "./assets/netflix/img2_row2_col1.jpg",
+    category: "TV-Shows",
+    genre: "K-예능 / 리얼리티 / 데이팅",
+    rating: "15+",
+    duration: "신규 에피소드",
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-reality-2",
+    type: "netflix",
+    title: "나는 SOLO",
+    creator: "데프콘, 송해나, 이이경",
+    description: "결혼을 간절히 원하는 솔로 남녀들이 모여 사랑을 찾기 위해 고군분투하는 극사실주의 리얼 데이팅 프로그램.",
+    imageUrl: "./assets/netflix/img2_row2_col2.jpg",
+    category: "TV-Shows",
+    genre: "K-예능 / 리얼리티 / 데이팅",
+    rating: "15+",
+    duration: "신규 에피소드",
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-reality-3",
+    type: "netflix",
+    title: "솔로지옥",
+    creator: "홍진경, 이다희, 규현, 덱스",
+    description: "커플이 되어야만 탈출할 수 있는 외딴섬 '지옥도'에서 펼쳐지는 청춘 남녀들의 솔직하고 도발적인 연애 리얼리티.",
+    imageUrl: "./assets/netflix/img2_row2_col3.jpg",
+    category: "TV-Shows",
+    genre: "K-예능 / 리얼리티 / 로맨스",
+    rating: "15+",
+    duration: "시즌 3개"
+  },
+  {
+    id: "netflix-reality-4",
+    type: "netflix",
+    title: "최후의 인류",
+    creator: "리얼 다큐",
+    description: "극단적인 기후 변화 속에서 생존하기 위한 인류 최후의 기록과 사투를 그려낸 본격 환경 예능 다큐멘터리.",
+    imageUrl: "./assets/netflix/img2_row2_col4.jpg",
+    category: "TV-Shows",
+    genre: "다큐멘터리 / 생존 / 사회",
+    rating: "15+",
+    duration: "신규 에피소드",
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-reality-5",
+    type: "netflix",
+    title: "법륜스님의 스님과 손님",
+    creator: "법륜스님",
+    description: "인생의 길을 잃은 손님들에게 법륜스님이 전하는 따뜻하고 명쾌한 즉문즉설 인생 조언 멘토링 예능.",
+    imageUrl: "./assets/netflix/img2_row2_col5.jpg",
+    category: "TV-Shows",
+    genre: "K-예능 / 토크 / 힐링 / 멘토링",
+    rating: "All",
+    duration: "신규 에피소드",
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-reality-6",
+    type: "netflix",
+    title: "피지컬: 100",
+    creator: "생존 게임 서바이벌",
+    description: "가장 완벽한 피지컬을 찾기 위해 모인 100인의 몸싸움 서바이벌 극강 퀘스트.",
+    imageUrl: "./assets/netflix/img2_row2_col6.jpg",
+    category: "TV-Shows",
+    genre: "K-예능 / 서바이벌 / 운동",
+    rating: "12+",
+    duration: "시즌 2개"
+  },
+  {
+    id: "netflix-reality-7",
+    type: "netflix",
+    title: "신규 리얼리티",
+    creator: "신작 예능",
+    description: "새롭게 단장하여 시청자를 찾아가는 좌충우돌 라이브 버라이어티.",
+    imageUrl: "./assets/netflix/img2_row2_col7.jpg",
+    category: "TV-Shows",
+    genre: "K-예능 / 코미디",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-acclaimed-0",
+    type: "netflix",
+    title: "언젠가는 슬기로울 전공의생활",
+    creator: "고윤정, 신시아",
+    description: "대학병원 산부인과 전공의들의 리얼한 병원 생활과 풋풋한 우정을 다룬 의사생활 스핀오프.",
+    imageUrl: "./assets/netflix/img2_row3_col0.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 메디컬 / 휴먼",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-acclaimed-1",
+    type: "netflix",
+    title: "슬기로운 감빵생활",
+    creator: "박해수, 정경호, 성동일",
+    description: "하루아침에 교도소에 갇히게 된 슈퍼스타 야구선수 김제혁의 슬기로운 교도소 생존기와 그 안의 다양한 수감자들의 이야기.",
+    imageUrl: "./assets/netflix/img2_row3_col1.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 코미디 / 드라마 / 블랙 코미디",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-acclaimed-2",
+    type: "netflix",
+    title: "폭싹 속았수다 (M)",
+    creator: "로맨스 사극",
+    description: "제주에서 태어난 반항아 애순이와 우직한 관식이의 일생을 사계절로 풀어낸 헌사 같은 사랑 드라마.",
+    imageUrl: "./assets/netflix/img2_row3_col2.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 시대극 / 청춘 / 로맨스",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-acclaimed-3",
+    type: "netflix",
+    title: "모범택시",
+    creator: "이제훈, 이솜, 김의성",
+    description: "법의 보호를 받지 못하는 억울한 피해자들을 대신해 사적 복수를 대행해 주는 비밀 택시회사 무지개 운수와 그들의 처절한 복수극.",
+    imageUrl: "./assets/netflix/img2_row3_col3.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 액션 / 범죄 / 스릴러",
+    rating: "18+",
+    duration: "시즌 2개"
+  },
+  {
+    id: "netflix-acclaimed-4",
+    type: "netflix",
+    title: "선재 업고 튀어",
+    creator: "변우석, 김혜윤",
+    description: "삶의 의지를 놓아버렸던 순간, 자신을 살려준 아티스트 류선재의 죽음. 그의 비극적인 운명을 바꾸기 위해 2008년으로 시간 여행을 떠나는 임솔의 로맨스 구원 서사.",
+    imageUrl: "./assets/netflix/img2_row3_col4.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 타임슬립 / 판타지 / 로맨스 / 청춘",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-acclaimed-5",
+    type: "netflix",
+    title: "재벌집 막내아들",
+    creator: "송중기, 이성민, 신현빈",
+    description: "재벌 총수 일가의 리스크를 관리하던 비서가 재벌가의 막내아들로 회귀하여 인생 2회차를 살며 순양그룹을 통째로 집어삼키는 판타지 복수극.",
+    imageUrl: "./assets/netflix/img2_row3_col5.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 회귀 / 판타지 / 기업 경영",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-acclaimed-6",
+    type: "netflix",
+    title: "스물다섯 스물하나",
+    creator: "김태리, 남주혁",
+    description: "IMF 시대에 꿈을 빼앗긴 청춘들의 방황과 성장을 그린 드라마. 스물둘과 열여덟에 만나, 스물다섯과 스물하나에 사랑하고 성장한 청춘 로맨스.",
+    imageUrl: "./assets/netflix/img2_row3_col6.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 청춘 / 성장 / 로맨스 / 스포츠",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-acclaimed-7",
+    type: "netflix",
+    title: "은중과 상연 (M)",
+    creator: "우정 멜로",
+    description: "평생에 걸친 깊고 특별한 우정과 질투, 갈등을 그려낸 정교한 감성 멜로 드라마.",
+    imageUrl: "./assets/netflix/img2_row3_col7.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 휴먼 / 우정",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-top10-0",
+    type: "netflix",
+    title: "참교육",
+    creator: "네이버웹툰 / 스튜디오 LICO",
+    description: "무너진 교권을 다시 세우기 위한 나화진의 과감하고 시원한 정의 집행 학원 액션 드라마.",
+    imageUrl: "./assets/netflix/img3_top10_col0.jpg",
+    category: "TV-Shows",
+    genre: "K-웹툰 / 액션 / 학원물",
+    rating: "18+",
+    duration: "최신 등록",
+    rank: 1,
+    badge: "최신 등록"
+  },
+  {
+    id: "netflix-top10-1",
+    type: "netflix",
+    title: "멋진 신세계 (TOP)",
+    creator: "오리지널 시리즈",
+    description: "새로운 문명과 사회 체제 속 통제된 유토피아에서 인간 존엄성을 찾으려 발버둥 치는 이들의 SF 드라마.",
+    imageUrl: "./assets/netflix/img3_top10_col1.jpg",
+    category: "TV-Shows",
+    genre: "SF / 미스터리 / 스릴러",
+    rating: "18+",
+    duration: "신규 에피소드",
+    rank: 2,
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-top10-2",
+    type: "netflix",
+    title: "유재석 캠프★프 (TOP)",
+    creator: "안테나 예능",
+    description: "대국민 힐링 웃음 배달 프로젝트. 특별한 자연 속 캠프에서 펼쳐지는 유쾌한 야외 예능.",
+    imageUrl: "./assets/netflix/img3_top10_col2.jpg",
+    category: "TV-Shows",
+    genre: "K-예능 / 리얼리티 / 야외",
+    rating: "15+",
+    duration: "신규 에피소드",
+    rank: 3,
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-top10-3",
+    type: "netflix",
+    title: "꼬리에 꼬리를 무는 그날 이야기 (꼬꼬무)",
+    creator: "SBS 시사 예능",
+    description: "대한민국을 뒤흔들었던 역사 속 '그날'의 미스터리와 사건을 이야기꾼들이 친구에게 직접 말해주듯 들려주는 다큐형 토크쇼 예능.",
+    imageUrl: "./assets/netflix/img3_top10_col3.jpg",
+    category: "TV-Shows",
+    genre: "K-예능 / 다큐멘터리 / 범죄 역사 / 토크",
+    rating: "15+",
+    duration: "신규 에피소드",
+    rank: 4,
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-top10-4",
+    type: "netflix",
+    title: "최후의 인류 (TOP)",
+    creator: "SF 생존 다큐",
+    description: "종말을 앞둔 인류의 사투와 자연과의 전쟁을 리얼하게 담아낸 대작 다큐멘터리 예능.",
+    imageUrl: "./assets/netflix/img3_top10_col4.jpg",
+    category: "TV-Shows",
+    genre: "다큐멘터리 / SF / 생존",
+    rating: "15+",
+    duration: "신규 에피소드",
+    rank: 5,
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-game-0",
+    type: "netflix",
+    title: "Football Manager 2026 Mobile",
+    creator: "Sports Interactive / SEGA",
+    description: "클럽을 이끌며 전 세계 리그를 지배해 보세요. 최고의 전략과 전술로 나만의 드림팀을 구성하여 우승 트로피를 차지하는 스포츠 감독 매니지먼트 게임.",
+    imageUrl: "./assets/netflix/img3_games_col0.jpg",
+    category: "Game",
+    genre: "게임 / 스포츠 / 시뮬레이션 / 전략",
+    rating: "All",
+    duration: "새 업데이트",
+    isGame: true,
+    badge: "새 업데이트"
+  },
+  {
+    id: "netflix-game-1",
+    type: "netflix",
+    title: "솔리테어",
+    creator: "넷플릭스 클래식 카드 게임",
+    description: "간단하고 중독성 있는 클래식 카드 맞추기 퍼즐. 오프라인에서도 언제 어디서나 즐길 수 있는 최고의 캐주얼 힐링 게임.",
+    imageUrl: "./assets/netflix/img3_games_col1.jpg",
+    category: "Game",
+    genre: "게임 / 카드 / 퍼즐 / 캐주얼",
+    rating: "All",
+    duration: "카드 게임",
+    isGame: true
+  },
+  {
+    id: "netflix-game-2",
+    type: "netflix",
+    title: "레드 데드 리뎀션 (Red Dead Redemption)",
+    creator: "Rockstar Games",
+    description: "무법자 아서 모건과 반 더 린드 갱단의 몰락해가는 서부 개척 시대를 생생히 그려낸 오픈 월드 명작 액션 게임.",
+    imageUrl: "./assets/netflix/img3_games_col2.jpg",
+    category: "Game",
+    genre: "게임 / 액션 / 오픈월드 / 어드벤처",
+    rating: "18+",
+    duration: "액션",
+    isGame: true
+  },
+  {
+    id: "netflix-game-3",
+    type: "netflix",
+    title: "넷플릭스 퍼즐 모음",
+    creator: "다양한 두뇌 퍼즐",
+    description: "쉬우면서도 머리를 써야 하는 퍼즐 게임들의 집합. 레벨별 챌린지를 클리어하며 두뇌 훈련을 해보세요.",
+    imageUrl: "./assets/netflix/img3_games_col3.jpg",
+    category: "Game",
+    genre: "게임 / 퍼즐 / 두뇌개발",
+    rating: "All",
+    duration: "퍼즐",
+    isGame: true
+  },
+  {
+    id: "netflix-game-4",
+    type: "netflix",
+    title: "블루스 TD 6 (풍선 타워 디펜스 6)",
+    creator: "Ninja Kiwi",
+    description: "풍선들을 물리치기 위해 원숭이 타워와 강력한 영웅들을 조합하여 막아내는 중독성 만점의 타워 디펜스 전략 게임.",
+    imageUrl: "./assets/netflix/img3_games_col4.jpg",
+    category: "Game",
+    genre: "게임 / 디펜스 / 전략 / 캐주얼",
+    rating: "All",
+    duration: "새 업데이트",
+    isGame: true,
+    badge: "새 업데이트"
+  },
+  {
+    id: "netflix-game-5",
+    type: "netflix",
+    title: "넷플릭스 놀이터",
+    creator: "어린이 키즈 퍼즐",
+    description: "아이들을 위한 귀여운 동물 캐릭터들과 함께하는 직관적이고 안전한 미니 게임 및 창의력 퍼즐 컬렉션.",
+    imageUrl: "./assets/netflix/img3_games_col5.jpg",
+    category: "Game",
+    genre: "게임 / 어린이 / 교육 / 퍼즐",
+    rating: "All",
+    duration: "어린이",
+    isGame: true
+  },
+  {
+    id: "netflix-game-6",
+    type: "netflix",
+    title: "Word Trails",
+    creator: "영어 단어 맞추기",
+    description: "제시된 알파벳을 연결하여 숨겨진 단어를 찾아내는 심플하고 스마트한 크로스워드 영단어 퍼즐 게임.",
+    imageUrl: "./assets/netflix/img3_games_col6.jpg",
+    category: "Game",
+    genre: "게임 / 퍼즐 / 어휘력",
+    rating: "All",
+    duration: "퍼즐",
+    isGame: true
+  },
+  {
+    id: "netflix-game-7",
+    type: "netflix",
+    title: "World of Peppa Pig (페파피그)",
+    creator: "어린이 애니메이션 게임",
+    description: "귀여운 페파피그와 그 친구들과 함께 떠나는 창의 미니게임 및 생활 습관 발달용 키즈 플레이랜드.",
+    imageUrl: "./assets/netflix/img3_games_col7.jpg",
+    category: "Game",
+    genre: "게임 / 어린이 / 캐주얼",
+    rating: "All",
+    duration: "어린이",
+    isGame: true
+  },
+  {
+    id: "netflix-new-0",
+    type: "netflix",
+    title: "참교육 (NEW)",
+    creator: "웹툰 원작",
+    description: "학교 내의 불의를 처단하고 정의를 재정의하는 특별교사 나화진의 카리스마 액션 활약상.",
+    imageUrl: "./assets/netflix/img3_new_col0.jpg",
+    category: "TV-Shows",
+    genre: "K-웹툰 / 액션",
+    rating: "18+",
+    duration: "최신 등록",
+    badge: "최신 등록"
+  },
+  {
+    id: "netflix-new-1",
+    type: "netflix",
+    title: "선재 업고 튀어 (NEW)",
+    creator: "판타지 로맨스",
+    description: "임솔의 헌신적인 시간여행 로맨스. 선재를 살리기 위한 2008년의 풋풋하고 치열한 기억의 조각.",
+    imageUrl: "./assets/netflix/img3_new_col1.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 로맨스",
+    rating: "15+",
+    duration: "시즌 1개"
+  },
+  {
+    id: "netflix-new-2",
+    type: "netflix",
+    title: "최후의 인류 (NEW)",
+    creator: "생존 다큐",
+    description: "신규 에피소드 공개! 환경 파괴 속 지구 구석구석에서 살아남은 인류의 다큐멘터리 서사.",
+    imageUrl: "./assets/netflix/img3_new_col2.jpg",
+    category: "TV-Shows",
+    genre: "다큐멘터리 / 생존",
+    rating: "15+",
+    duration: "신규 에피소드",
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-new-3",
+    type: "netflix",
+    title: "중간계",
+    creator: "정통 판타지 대작",
+    description: "빛과 어둠의 세력이 대립하는 중간계에서 펼쳐지는 장엄한 여정과 종족 간의 운명을 건 거대한 전투 서사 드라마.",
+    imageUrl: "./assets/netflix/img3_new_col3.jpg",
+    category: "Movies",
+    genre: "판타지 / 모험 / 액션",
+    rating: "15+",
+    duration: "2시간 45분"
+  },
+  {
+    id: "netflix-new-4",
+    type: "netflix",
+    title: "세계의 부인",
+    creator: "격동의 실화 시대극",
+    description: "역사 속 위대한 발견과 혁명의 순간을 이끌었던 한 부인의 강인한 극복 스토리와 로맨스 실화 영화.",
+    imageUrl: "./assets/netflix/img3_new_col4.jpg",
+    category: "Movies",
+    genre: "영화 / 드라마 / 시대극 / 실화",
+    rating: "15+",
+    duration: "2시간 12분"
+  },
+  {
+    id: "netflix-new-5",
+    type: "netflix",
+    title: "교조",
+    creator: "미스터리 스릴러",
+    description: "신규 에피소드 공개! 사이비 종교의 어두운 실체를 파헤치는 수사팀의 끈질긴 추적 미스터리 수사극.",
+    imageUrl: "./assets/netflix/img3_new_col5.jpg",
+    category: "TV-Shows",
+    genre: "K-Drama / 미스터리 / 스릴러",
+    rating: "18+",
+    duration: "신규 에피소드",
+    badge: "신규 에피소드"
+  },
+  {
+    id: "netflix-new-6",
+    type: "netflix",
+    title: "Re:제로부터 시작하는 이세계 생활",
+    creator: "White Fox / 하라하라 텟페이",
+    description: "갑자기 이세계로 소환된 고등학생 나츠키 스바루가 죽음으로써 시간을 되돌리는 '사망귀환'의 루프 속에서 소중한 사람들을 구하는 처절한 판타지.",
+    imageUrl: "./assets/netflix/img3_new_col6.jpg",
+    category: "TV-Shows",
+    genre: "애니메이션 / 다크 판타지 / 루프물 / 액션",
+    rating: "15+",
+    duration: "시즌 3개"
+  },
+  {
+    id: "netflix-new-7",
+    type: "netflix",
+    title: "신규 콘텐츠",
+    creator: "넷플릭스 오리지널 신작",
+    description: "이번 주 새롭게 공개된 초감각 어드벤처 오리지널 대작 무비.",
+    imageUrl: "./assets/netflix/img3_new_col7.jpg",
+    category: "Movies",
+    genre: "영화 / 액션 / SF",
+    rating: "15+",
+    duration: "1시간 58분"
   }
 ];
 
@@ -714,7 +1582,13 @@ function functionById(id) {
 }
 
 function cardIcon(item, className = "card-icon") {
-  return `<span class="${className} launcher-icon-${item.icon}" style="--card-color: ${item.color}" aria-hidden="true">${svgIcon(item.icon)}</span>`;
+  const isBrand = [
+    "navigation", "music", "message", "call", "bluetooth", "radio", 
+    "energy", "blackbox", "camera", "app-market", "vehicle", "driving", 
+    "android-auto", "carplay", "mirroring", "gleo-ai"
+  ].includes(item.icon);
+  const extraClass = isBrand ? " brand-icon" : "";
+  return `<span class="${className}${extraClass} launcher-icon-${item.icon}" style="--card-color: ${item.color}" aria-hidden="true">${svgIcon(item.icon)}</span>`;
 }
 
 function escapeHtml(value) {
@@ -744,9 +1618,19 @@ function renderRecentDockApps() {
       return '<span class="gnb-recent-button gnb-recent-empty" aria-hidden="true"></span>';
     }
 
+    const isBouncing = app.appId === bouncingAppId;
+    const bounceClass = isBouncing ? " gnb-icon-bounce" : "";
+
+    const isBrand = [
+      "navigation", "music", "message", "call", "bluetooth", "radio", 
+      "energy", "blackbox", "camera", "app-market", "vehicle", "driving", 
+      "android-auto", "carplay", "mirroring", "gleo-ai"
+    ].includes(app.icon);
+    const brandClass = isBrand ? " brand-icon" : "";
+
     return `
-      <button class="gnb-recent-button" type="button" data-app-id="${escapeHtml(app.appId)}" aria-label="${escapeHtml(app.title)} 실행">
-        <span class="gnb-recent-icon launcher-icon-${escapeHtml(app.icon)}" style="--card-color: ${escapeHtml(app.color)}" aria-hidden="true">
+      <button class="gnb-recent-button${bounceClass}" type="button" data-app-id="${escapeHtml(app.appId)}" aria-label="${escapeHtml(app.title)} 실행">
+        <span class="gnb-recent-icon${brandClass} launcher-icon-${escapeHtml(app.icon)}" style="--card-color: ${escapeHtml(app.color)}" aria-hidden="true">
           ${svgIcon(app.icon)}
         </span>
       </button>
@@ -754,10 +1638,20 @@ function renderRecentDockApps() {
   });
 
   gnbRecentApps.innerHTML = appButtons.join("");
+
+  gnbRecentApps.querySelectorAll(".gnb-icon-bounce").forEach((btn) => {
+    btn.addEventListener("animationend", () => {
+      btn.classList.remove("gnb-icon-bounce");
+      if (btn.dataset.appId === bouncingAppId) {
+        bouncingAppId = null;
+      }
+    }, { once: true });
+  });
 }
 
 function rememberRecentApp(id) {
   if (!appMetaById(id)) return;
+  bouncingAppId = id;
   recentDockApps = [id, ...recentDockApps.filter((appId) => appId !== id)].slice(0, RECENT_DOCK_LIMIT);
   renderRecentDockApps();
 }
@@ -1211,6 +2105,638 @@ function renderYouTubeTabletPanel(meta, results, selected, fallback) {
   `;
 }
 
+function renderNetflixDetailModal(selectedItem, fallback) {
+  const isMyList = netflixMyList.includes(selectedItem.id);
+  const isChamgyoyuk = selectedItem.id === "netflix-picked-0" || selectedItem.title.includes("참교육");
+  
+  const backdropUrl = isChamgyoyuk ? "./assets/netflix/detail_chamgyoyuk.jpg" : selectedItem.imageUrl;
+  const ratingText = isChamgyoyuk ? "19+" : (selectedItem.rating || "15+");
+  const yearText = isChamgyoyuk ? "2026" : "2024";
+  const descText = isChamgyoyuk ? "무너진 교육 현장을 바로 잡겠다는 목표로 창설된 '교권보호국'. 특전사 출신 나화진(김무열)이 현장 감독관으로 합류하여 참교육을 시전한다. 저지른 만큼 되돌려 받고, 뼈저리게 깨달을 때까지!" : selectedItem.description;
+  
+  const castMarkup = isChamgyoyuk 
+    ? `
+      <div class="netflix-crew-item">
+        <span class="label">출연:</span> <span class="val">김무열, 이성민, 진기주 ... <a href="#" class="more-link" onclick="event.preventDefault();">더 보기</a></span>
+      </div>
+      <div class="netflix-crew-item">
+        <span class="label">크리에이터:</span> <span class="val">홍종찬, 이남규, 김다희</span>
+      </div>
+      <div class="netflix-crew-item">
+        <span class="label">장르:</span> <span class="val">드라마, 코미디 시리즈</span>
+      </div>
+    `
+    : `
+      <div class="netflix-crew-item">
+        <span class="label">출연:</span> <span class="val">${escapeHtml(selectedItem.creator || "출연진 정보 없음")}</span>
+      </div>
+      <div class="netflix-crew-item">
+        <span class="label">장르:</span> <span class="val">${escapeHtml(selectedItem.genre || "드라마")}</span>
+      </div>
+    `;
+
+  return `
+    <div class="netflix-modal-backdrop" data-netflix-back>
+      <div class="netflix-detail-modal" onclick="event.stopPropagation();">
+        <div class="netflix-modal-banner" style="background-image: url('${escapeHtml(backdropUrl)}');">
+          <button type="button" class="netflix-modal-close" data-netflix-back aria-label="닫기">✕</button>
+          <button type="button" class="netflix-modal-audio-toggle" aria-label="음소거 설정">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="audio-icon">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <line x1="23" y1="9" x2="17" y2="15"/>
+              <line x1="17" y1="9" x2="23" y2="15"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="netflix-modal-body">
+          <div class="netflix-modal-brand-row">
+            <span class="netflix-brand-logo-text">NETFLIX</span>
+          </div>
+          <h2 class="netflix-modal-title">${escapeHtml(selectedItem.title)}</h2>
+          
+          <div class="netflix-modal-meta-row">
+            <span class="netflix-meta-year">${escapeHtml(yearText)}</span>
+            <span class="netflix-meta-rating-badge">${escapeHtml(ratingText)}</span>
+            <span class="netflix-meta-type">리미티드 시리즈</span>
+            <span class="netflix-meta-badge-rect">HD</span>
+            <span class="netflix-meta-badge-ad">AD))</span>
+            <span class="netflix-meta-speech-bubble">💬</span>
+          </div>
+          
+          <div class="netflix-modal-rank-row">
+            <div class="netflix-modal-rank-badge">TOP 10</div>
+            <span class="netflix-modal-rank-text">오늘 시리즈 순위 1위</span>
+          </div>
+          
+          <div class="netflix-modal-action-buttons">
+            <button type="button" class="netflix-modal-btn-play" data-netflix-play data-netflix-hero-id="${escapeHtml(selectedItem.id)}">
+              ${svgIcon("play")} 재생
+            </button>
+            <button type="button" class="netflix-modal-btn-save">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="download-icon">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              저장
+            </button>
+          </div>
+          
+          <div class="netflix-modal-content-grid">
+            <div class="netflix-modal-desc-col">
+              <p class="netflix-modal-description">${escapeHtml(descText)}</p>
+            </div>
+            <div class="netflix-modal-crew-col">
+              ${castMarkup}
+            </div>
+          </div>
+          
+          <div class="netflix-modal-icon-actions">
+            <button type="button" class="netflix-modal-icon-btn ${isMyList ? "active" : ""}" data-netflix-mylist-toggle="${escapeHtml(selectedItem.id)}">
+              <span class="icon-span">
+                ${isMyList 
+                  ? `<svg class="action-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>` 
+                  : `<svg class="action-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`
+                }
+              </span>
+              <span class="text-span">내가 찜한 리스트</span>
+            </button>
+            <button type="button" class="netflix-modal-icon-btn">
+              <span class="icon-span">
+                <svg class="action-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                </svg>
+              </span>
+              <span class="text-span">평가</span>
+            </button>
+            <button type="button" class="netflix-modal-icon-btn">
+              <span class="icon-span">
+                <svg class="action-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </span>
+              <span class="text-span">공유</span>
+            </button>
+          </div>
+          
+          <div class="netflix-modal-tabs">
+            <button type="button" class="netflix-modal-tab-btn active">회차</button>
+            <button type="button" class="netflix-modal-tab-btn">비슷한 콘텐츠</button>
+            <button type="button" class="netflix-modal-tab-btn">예고편 및 다른 영상</button>
+          </div>
+          
+          <div class="netflix-modal-episodes-list">
+            <div class="netflix-modal-episodes-header">
+              <span>리미티드 시리즈</span>
+              <button type="button" class="info-btn">ⓘ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderNetflixTabletPanel(meta, results, selected, fallback) {
+  const selectedItem = selectedMediaId ? MEDIA_CATALOG.find(item => item.id === selectedMediaId) : null;
+
+  // 1. Video Player View
+  if (netflixPlaying && selectedItem) {
+    return `
+      <section class="netflix-player-view">
+        <div class="netflix-player-backdrop" style="background-image: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url('${escapeHtml(selectedItem.imageUrl)}')"></div>
+        <header class="netflix-player-header">
+          <button type="button" class="netflix-player-back" data-netflix-player-back aria-label="이전 화면으로">
+            ${svgIcon("chevron-left")}
+          </button>
+          <div class="netflix-player-title-info">
+            <h2>${escapeHtml(selectedItem.title)}</h2>
+            <span>${selectedItem.category === "TV-Shows" ? "시즌 1: 1화 재생 중" : "영화 감상 중"}</span>
+          </div>
+        </header>
+        <div class="netflix-player-center">
+          <button type="button" class="netflix-player-control-btn prev-10" aria-label="10초 뒤로">${svgIcon("prev")}</button>
+          <button type="button" class="netflix-player-control-btn play-pause primary" aria-label="일시 정지">${svgIcon("pause")}</button>
+          <button type="button" class="netflix-player-control-btn next-10" aria-label="10초 앞으로">${svgIcon("next")}</button>
+        </div>
+        <footer class="netflix-player-footer">
+          <div class="netflix-player-scrubber-row">
+            <span>04:12</span>
+            <div class="netflix-player-scrubber-bar">
+              <div class="netflix-player-scrubber-fill" style="width: 25%"></div>
+              <div class="netflix-player-scrubber-handle" style="left: 25%"></div>
+            </div>
+            <span>${escapeHtml(selectedItem.duration)}</span>
+          </div>
+          <div class="netflix-player-actions-row">
+            <div class="netflix-player-actions-left">
+              <button type="button" class="netflix-action-btn">${svgIcon("mute")}</button>
+              <span class="netflix-volume-bar"><div><i style="width: 60%"></i></div></span>
+            </div>
+            <div class="netflix-player-actions-right">
+              <span class="netflix-badge">UHD</span>
+              <span class="netflix-badge">5.1 CH</span>
+            </div>
+          </div>
+        </footer>
+      </section>
+    `;
+  }
+
+  // 2. Compute Modal overlay markup if selection exists
+  let modalMarkup = "";
+  if (selectedItem) {
+    modalMarkup = renderNetflixDetailModal(selectedItem, fallback);
+  }
+
+  // 3. Browse Feed (Catalog) View
+  let mainContent = "";
+
+  if (mediaSearchQuery.trim() !== "") {
+    mainContent = `
+      <div class="netflix-scrollable-content">
+        <div class="netflix-section-heading">
+          <h2>"${escapeHtml(mediaSearchQuery)}" 검색 결과</h2>
+          <span>${results.length}개의 작품</span>
+        </div>
+        <div class="netflix-cards-grid">
+          ${results.map(item => {
+            const isGame = item.isGame;
+            return `
+              <div class="${isGame ? "netflix-game-card" : "netflix-card"}" data-media-id="${escapeHtml(item.id)}">
+                <div class="${isGame ? "netflix-game-art-wrapper" : "netflix-card-thumb-wrapper"}">
+                  ${mediaArtwork(item, isGame ? "netflix-game-art" : "netflix-card-thumb", fallback, item.title)}
+                  <span class="netflix-card-badge">${escapeHtml(item.rating)}</span>
+                </div>
+                <div class="netflix-card-info">
+                  <strong>${escapeHtml(item.title)}</strong>
+                  <span>${escapeHtml(item.genre ? item.genre.split(" / ")[0] : "콘텐츠")}</span>
+                </div>
+              </div>
+            `;
+          }).join("")}
+          ${!results.length ? `<div class="netflix-empty-state">검색 결과가 없습니다. 다른 검색어를 입력해 보세요.</div>` : ""}
+        </div>
+      </div>
+    `;
+  } else {
+    // Sub-navigation buttons
+    const subNavMarkup = `
+      <div class="netflix-sub-nav">
+        <button type="button" class="netflix-sub-nav-btn ${netflixActiveTab === "tv-shows" ? "active" : ""}" data-netflix-sub-tab="tv-shows">시리즈</button>
+        <button type="button" class="netflix-sub-nav-btn ${netflixActiveTab === "movies" ? "active" : ""}" data-netflix-sub-tab="movies">영화</button>
+        <button type="button" class="netflix-sub-nav-btn ${netflixActiveTab === "new-hot" ? "active" : ""}" data-netflix-sub-tab="new-hot">NEW & HOT</button>
+        <button type="button" class="netflix-sub-nav-btn dropdown" data-netflix-sub-tab="categories">카테고리 <span class="arrow">▼</span></button>
+      </div>
+    `;
+
+    // Helper to render regular cards
+    const renderCard = (itemId) => {
+      const item = MEDIA_CATALOG.find(i => i.id === itemId);
+      if (!item) return "";
+      return `
+        <div class="netflix-card-regular" data-media-id="${escapeHtml(item.id)}">
+          <div class="netflix-card-art-wrapper">
+            ${mediaArtwork(item, "netflix-card-art", fallback, item.title)}
+            ${netflixCardBadge(item)}
+          </div>
+        </div>
+      `;
+    };
+
+    // Helper for cards badge
+    function netflixCardBadge(item) {
+      if (!item.badge) return "";
+      if (item.badge === "최신 등록") {
+        return `<div class="netflix-card-badge-red">최신 등록</div>`;
+      }
+      if (item.badge === "신규 에피소드") {
+        return `
+          <div class="netflix-card-badge-pill">
+            <span class="pill-top">새로운 에피소드</span>
+            <span class="pill-bottom">지금 시청하기</span>
+          </div>
+        `;
+      }
+      return `<div class="netflix-card-badge-generic">${escapeHtml(item.badge)}</div>`;
+    }
+
+    if (netflixActiveTab === "home") {
+      const heroItemId = "netflix-picked-0"; // 참교육
+      const heroItem = MEDIA_CATALOG.find(i => i.id === heroItemId) || results[0];
+
+      // Shelf lists by screenshot card definitions
+      const pickedRow = ["netflix-picked-0", "netflix-picked-1", "netflix-picked-2", "netflix-picked-3", "netflix-picked-4", "netflix-picked-5", "netflix-picked-6", "netflix-picked-7"];
+      const kdramaRow = ["netflix-kdrama-0", "netflix-kdrama-1", "netflix-kdrama-2", "netflix-kdrama-3", "netflix-kdrama-4", "netflix-kdrama-5", "netflix-kdrama-6", "netflix-kdrama-7"];
+      const animeRow = ["netflix-anime-0", "netflix-anime-1", "netflix-anime-2", "netflix-anime-3", "netflix-anime-4", "netflix-anime-5", "netflix-anime-6", "netflix-anime-7"];
+      const mylistRow = ["netflix-mylist-0", "netflix-mylist-1", "netflix-mylist-2", "netflix-mylist-3", "netflix-mylist-4", "netflix-mylist-5", "netflix-mylist-6", "netflix-mylist-7"];
+      const realityRow = ["netflix-reality-0", "netflix-reality-1", "netflix-reality-2", "netflix-reality-3", "netflix-reality-4", "netflix-reality-5", "netflix-reality-6", "netflix-reality-7"];
+      const acclaimedRow = ["netflix-acclaimed-0", "netflix-acclaimed-1", "netflix-acclaimed-2", "netflix-acclaimed-3", "netflix-acclaimed-4", "netflix-acclaimed-5", "netflix-acclaimed-6", "netflix-acclaimed-7"];
+      const top10Row = ["netflix-top10-0", "netflix-top10-1", "netflix-top10-2", "netflix-top10-3", "netflix-top10-4"];
+      const gamesRow = ["netflix-game-0", "netflix-game-1", "netflix-game-2", "netflix-game-3", "netflix-game-4", "netflix-game-5", "netflix-game-6", "netflix-game-7"];
+      const newRow = ["netflix-new-0", "netflix-new-1", "netflix-new-2", "netflix-new-3", "netflix-new-4", "netflix-new-5", "netflix-new-6", "netflix-new-7"];
+
+      mainContent = `
+        <div class="netflix-scrollable-content">
+          ${subNavMarkup}
+          
+          <!-- Hero Banner (참교육 메인 배너) -->
+          <div class="netflix-hero-banner" style="background-image: linear-gradient(to top, rgba(20,20,20,1) 0%, rgba(20,20,20,0.4) 40%, rgba(20,20,20,0) 80%), url('./assets/netflix/hero_banner.jpg')">
+            <div class="netflix-hero-overlay">
+              <span class="netflix-hero-badge">N SERIES</span>
+              <h1 class="netflix-hero-title">${escapeHtml(heroItem.title)}</h1>
+              <p class="netflix-hero-desc">지금 리미티드 시리즈를 시청하세요</p>
+              <div class="netflix-hero-actions">
+                <button type="button" class="netflix-btn-play" data-netflix-play data-netflix-hero-id="${heroItem.id}">
+                  ${svgIcon("play")} <span>재생</span>
+                </button>
+                <button type="button" class="netflix-btn-mylist-toggle" data-netflix-mylist-toggle="${heroItem.id}">
+                  ＋ <span>내가 찜한 리스트</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Shelf 1: 엄선한 오늘의 콘텐츠 -->
+          <div class="netflix-shelf">
+            <h3>회원님을 위해 엄선한 오늘의 콘텐츠</h3>
+            <div class="netflix-shelf-row scroll-x">
+              ${pickedRow.map(id => renderCard(id)).join("")}
+            </div>
+          </div>
+
+          <!-- Shelf 2: 영어 자막이 제공되는 한국 드라마 -->
+          <div class="netflix-shelf">
+            <h3>영어 자막이 제공되는 한국 드라마</h3>
+            <div class="netflix-shelf-row scroll-x">
+              ${kdramaRow.map(id => renderCard(id)).join("")}
+            </div>
+          </div>
+
+          <!-- Shelf 3: 애니 -->
+          <div class="netflix-shelf">
+            <h3>애니</h3>
+            <div class="netflix-shelf-row scroll-x">
+              ${animeRow.map(id => renderCard(id)).join("")}
+            </div>
+          </div>
+
+          <!-- Shelf 4: 내가 찜한 리스트 -->
+          <div class="netflix-shelf">
+            <div class="netflix-shelf-title-row">
+              <h3>내가 찜한 리스트</h3>
+              <button type="button" class="netflix-see-all-btn" data-netflix-tab="my-netflix">모두 보기 &gt;</button>
+            </div>
+            <div class="netflix-shelf-row scroll-x">
+              ${mylistRow.map(id => renderCard(id)).join("")}
+            </div>
+          </div>
+
+          <!-- Shelf 5: 한국 리얼리티, 버라이어티 & 토크쇼 -->
+          <div class="netflix-shelf">
+            <h3>한국 리얼리티, 버라이어티 & 토크쇼</h3>
+            <div class="netflix-shelf-row scroll-x">
+              ${realityRow.map(id => renderCard(id)).join("")}
+            </div>
+          </div>
+
+          <!-- Shelf 6: 작품성을 인정받은 시리즈 -->
+          <div class="netflix-shelf">
+            <h3>작품성을 인정받은 시리즈</h3>
+            <div class="netflix-shelf-row scroll-x">
+              ${acclaimedRow.map(id => renderCard(id)).join("")}
+            </div>
+          </div>
+
+          <!-- Shelf 7: TOP 10 시리즈 -->
+          <div class="netflix-shelf">
+            <h3>오늘 대한민국이 TOP 10 시리즈</h3>
+            <div class="netflix-shelf-row scroll-x netflix-top10-row">
+              ${top10Row.map((id, idx) => {
+                const item = MEDIA_CATALOG.find(i => i.id === id);
+                if (!item) return "";
+                return `
+                  <div class="netflix-top10-card" data-media-id="${escapeHtml(item.id)}">
+                    <div class="netflix-top10-rank-num">${idx + 1}</div>
+                    <div class="netflix-top10-art-wrapper">
+                      ${mediaArtwork(item, "netflix-poster-art", fallback, item.title)}
+                      ${netflixCardBadge(item)}
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+
+          <!-- Shelf 8: 모바일 게임 (Square) -->
+          <div class="netflix-shelf">
+            <div class="netflix-shelf-title-row">
+              <h3>모바일 게임</h3>
+              <button type="button" class="netflix-see-all-btn" data-netflix-tab="my-netflix">내가 찜한 리스트 &gt;</button>
+            </div>
+            <div class="netflix-shelf-row scroll-x netflix-games-row">
+              ${gamesRow.map(id => {
+                const item = MEDIA_CATALOG.find(i => i.id === id);
+                if (!item) return "";
+                return `
+                  <div class="netflix-game-card" data-media-id="${escapeHtml(item.id)}">
+                    <div class="netflix-game-art-wrapper">
+                      ${mediaArtwork(item, "netflix-game-art", fallback, item.title)}
+                      ${item.badge ? `<div class="netflix-game-badge">새 업데이트</div>` : ""}
+                    </div>
+                    <div class="netflix-game-info">
+                      <strong class="netflix-game-title">${escapeHtml(item.title)}</strong>
+                      <span class="netflix-game-genre">${escapeHtml(item.genre ? item.genre.split(" / ")[1] || item.genre.split(" / ")[0] : "게임")}</span>
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+
+          <!-- Shelf 9: 새로 올라온 콘텐츠 -->
+          <div class="netflix-shelf">
+            <h3>넷플릭스에 새로 올라온 콘텐츠</h3>
+            <div class="netflix-shelf-row scroll-x netflix-new-row">
+              ${newRow.map(id => {
+                const item = MEDIA_CATALOG.find(i => i.id === id);
+                if (!item) return "";
+                return `
+                  <div class="netflix-card-new" data-media-id="${escapeHtml(item.id)}">
+                    <div class="netflix-new-art-wrapper">
+                      ${mediaArtwork(item, "netflix-new-art", fallback, item.title)}
+                      ${netflixCardBadge(item)}
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+
+        </div>
+      `;
+    } else if (netflixActiveTab === "tv-shows" || netflixActiveTab === "movies") {
+      const isTv = netflixActiveTab === "tv-shows";
+      const subNavTitle = isTv ? "시리즈" : "영화";
+      
+      const filteredRow1 = isTv 
+        ? ["netflix-kdrama-0", "netflix-kdrama-1", "netflix-kdrama-2", "netflix-kdrama-3", "netflix-kdrama-4", "netflix-kdrama-5", "netflix-kdrama-6", "netflix-kdrama-7"]
+        : ["netflix-new-3", "netflix-new-4", "netflix-new-7"];
+      const filteredRow2 = isTv
+        ? ["netflix-anime-0", "netflix-anime-1", "netflix-anime-2", "netflix-anime-3", "netflix-anime-4", "netflix-anime-5", "netflix-anime-6", "netflix-anime-7"]
+        : ["netflix-game-2", "netflix-picked-3", "netflix-mylist-3"];
+
+      mainContent = `
+        <div class="netflix-scrollable-content">
+          ${subNavMarkup}
+          
+          <div class="netflix-category-header">
+            <h2>${subNavTitle}</h2>
+          </div>
+
+          <div class="netflix-shelf">
+            <h3>인기 콘텐츠</h3>
+            <div class="netflix-shelf-row scroll-x">
+              ${filteredRow1.map(id => renderCard(id)).join("")}
+            </div>
+          </div>
+
+          <div class="netflix-shelf">
+            <h3>새로 올라온 콘텐츠</h3>
+            <div class="netflix-shelf-row scroll-x">
+              ${filteredRow2.map(id => renderCard(id)).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (netflixActiveTab === "new-hot") {
+      const upcoming = [
+        {
+          id: "netflix-picked-0",
+          title: "참교육 시즌 2",
+          date: "12월 26일 공개 예정",
+          month: "12월",
+          day: "26",
+          description: "선 넘는 학생들과 방관하는 교사들. 붕괴된 교권을 바로잡기 위해 교육부 산하 교권보호국 소속 나화진의 참교육이 다시 찾아온다.",
+          genre: "K-웹툰 / 액션 / 학원물",
+          imageUrl: "./assets/netflix/img3_new_col0.jpg"
+        },
+        {
+          id: "netflix-acclaimed-4",
+          title: "선재 업고 튀어 스페셜",
+          date: "다음 달 공개 예정",
+          month: "7월",
+          day: "15",
+          description: "류선재와 임솔의 못다 한 청춘 이야기. 그들의 가장 찬란하고 아름다웠던 시간들이 펼쳐진다.",
+          genre: "K-Drama / 타임슬립 / 판타지 / 로맨스",
+          imageUrl: "./assets/netflix/img3_new_col1.jpg"
+        },
+        {
+          id: "netflix-reality-4",
+          title: "최후의 인류 시즌 2",
+          date: "곧 공개 예정",
+          month: "8월",
+          day: "01",
+          description: "극단적인 기후 변화 속에서 생존하기 위한 인류 최후의 기록과 사투를 그려낸 본격 환경 예능 다큐멘터리.",
+          genre: "다큐멘터리 / 생존 / 사회",
+          imageUrl: "./assets/netflix/img3_new_col2.jpg"
+        }
+      ];
+
+      mainContent = `
+        <div class="netflix-scrollable-content new-hot-page">
+          ${subNavMarkup}
+          <div class="netflix-new-hot-timeline">
+            ${upcoming.map(item => `
+              <div class="netflix-new-hot-row" data-media-id="${item.id}">
+                <div class="netflix-date-column">
+                  <span class="new-hot-month">${item.month}</span>
+                  <span class="new-hot-day">${item.day}</span>
+                </div>
+                <div class="netflix-new-hot-card">
+                  <div class="new-hot-image-wrapper" style="background-image: url('${escapeHtml(item.imageUrl)}')"></div>
+                  <div class="new-hot-details">
+                    <div class="new-hot-header-row">
+                      <h2>${escapeHtml(item.title)}</h2>
+                      <div class="new-hot-action-buttons">
+                        <button type="button" class="btn-remind">🔔 종소리</button>
+                      </div>
+                    </div>
+                    <span class="new-hot-release-date">${escapeHtml(item.date)}</span>
+                    <p class="new-hot-desc">${escapeHtml(item.description)}</p>
+                    <span class="new-hot-genre">${escapeHtml(item.genre)}</span>
+                  </div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    } else if (netflixActiveTab === "my-netflix") {
+      const myListItems = MEDIA_CATALOG.filter(item => item.type === "netflix" && netflixMyList.includes(item.id));
+
+      mainContent = `
+        <div class="netflix-scrollable-content my-netflix-page">
+          <div class="my-netflix-profile-section">
+            <span class="my-netflix-avatar-large">${svgIcon("netflix-profile")}</span>
+            <div class="my-netflix-profile-info">
+              <h2>지석</h2>
+              <span>프로필 변경 및 계정 설정</span>
+            </div>
+          </div>
+
+          <div class="netflix-shelf">
+            <h3>내가 찜한 콘텐츠</h3>
+            <div class="netflix-cards-grid">
+              ${myListItems.map(item => `
+                <div class="netflix-card" data-media-id="${escapeHtml(item.id)}">
+                  <div class="netflix-card-thumb-wrapper">
+                    ${mediaArtwork(item, "netflix-card-thumb", fallback, item.title)}
+                    <span class="netflix-card-badge">${escapeHtml(item.rating)}</span>
+                  </div>
+                  <div class="netflix-card-info">
+                    <strong>${escapeHtml(item.title)}</strong>
+                    <span>${escapeHtml(item.genre ? item.genre.split(" / ")[0] : "드라마")}</span>
+                  </div>
+                </div>
+              `).join("")}
+              ${!myListItems.length ? `<div class="netflix-empty-state">찜한 콘텐츠가 비어 있습니다.</div>` : ""}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  // Layout wrapper with 92px menu rail and search topbar
+  return `
+    <div class="netflix-tablet-shell">
+      <!-- Sidebar Navigation Rail (92px column) -->
+      <aside class="netflix-tablet-rail">
+        <span class="netflix-rail-logo" aria-hidden="true">${svgIcon("netflix")}</span>
+
+        <nav class="netflix-rail-nav">
+          <button type="button" class="${netflixActiveTab === "home" ? "active" : ""}" data-netflix-tab="home" aria-label="홈">
+            ${svgIcon("home-outline")}
+            <span>홈</span>
+          </button>
+          <button type="button" class="${netflixActiveTab === "tv-shows" ? "active" : ""}" data-netflix-tab="tv-shows" aria-label="TV 프로그램">
+            ${svgIcon("netflix-tv")}
+            <span>TV 프로그램</span>
+          </button>
+          <button type="button" class="${netflixActiveTab === "movies" ? "active" : ""}" data-netflix-tab="movies" aria-label="영화">
+            ${svgIcon("netflix-movies")}
+            <span>영화</span>
+          </button>
+          <button type="button" class="${netflixActiveTab === "new-hot" ? "active" : ""}" data-netflix-tab="new-hot" aria-label="New & Hot">
+            ${svgIcon("netflix-hot")}
+            <span>New & Hot</span>
+          </button>
+          <button type="button" class="${netflixActiveTab === "my-netflix" ? "active" : ""}" data-netflix-tab="my-netflix" aria-label="나의 넷플릭스">
+            <span class="netflix-rail-avatar-icon">${svgIcon("netflix-profile")}</span>
+            <span>나의 넷플릭스</span>
+          </button>
+        </nav>
+      </aside>
+
+      <!-- Main Content and Topbar -->
+      <section class="netflix-main-container">
+        <div class="netflix-panel-content">
+          <!-- Custom sticky Netflix top header -->
+          <header class="netflix-top-bar" id="netflixTopBar">
+            <div class="netflix-top-bar-left">
+              <svg class="netflix-top-bar-logo" viewBox="0 0 144 144" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Netflix">
+                <path d="M 52 32 H 66 V 110 Q 59 110 52 113 Z" fill="#E50914"/>
+                <path d="M 78 32 H 92 V 113 Q 85 110 78 110 Z" fill="#E50914"/>
+                <path d="M 52 32 H 66 L 92 113 Q 85 110 78 110 Z" fill="#B81D24"/>
+              </svg>
+              <span class="netflix-top-bar-title">홈</span>
+            </div>
+            <div class="netflix-top-bar-right">
+              <!-- Search Toggle Button -->
+              <button type="button" class="netflix-top-bar-btn" id="netflixSearchToggle" aria-label="검색">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              </button>
+              <!-- Download Button -->
+              <button type="button" class="netflix-top-bar-btn" aria-label="오프라인 저장 콘텐츠">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </button>
+              <!-- Notification Bell Button -->
+              <button type="button" class="netflix-top-bar-btn netflix-bell-btn" aria-label="알림">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span class="netflix-top-bar-badge">4</span>
+              </button>
+            </div>
+          </header>
+
+          <!-- Collapsible Search Form Overlay -->
+          <div class="netflix-search-overlay" id="netflixSearchOverlay" style="display: ${mediaSearchQuery.trim() !== '' ? 'block' : 'none'};">
+            <form class="netflix-overlay-search-form" id="mediaSearchForm" onsubmit="event.preventDefault();">
+              <input id="mediaSearchInput" type="search" value="${escapeHtml(mediaSearchQuery)}" placeholder="${meta.placeholder}" autocomplete="off" />
+              <button type="button" id="mediaSearchButton" aria-label="검색">${svgIcon("search-outline")}</button>
+            </form>
+          </div>
+
+          ${mainContent}
+        </div>
+      </section>
+      ${modalMarkup}
+    </div>
+  `;
+}
+
 async function fetchExternalMediaResults() {
   const meta = MEDIA_APP_META[activeMediaApp];
   const query = mediaSearchQuery.trim();
@@ -1290,113 +2816,135 @@ function bindLandscapeDragToClose(container) {
   let isDragging = false;
   let startY = 0;
   let currentY = 0;
-  let activeInput = "";
+  let rafId = null;
   const closeThreshold = 120;
 
-  const startDrag = (clientY, inputType) => {
+  const startDrag = (clientY) => {
     if (isDragging) return;
     isDragging = true;
-    activeInput = inputType;
     startY = clientY;
     currentY = 0;
     container.style.transition = "none";
+    container.style.willChange = "transform, opacity";
+    container.classList.add("is-dragging-landscape");
   };
 
   const moveDrag = (clientY) => {
     if (!isDragging) return;
     currentY = Math.max(0, clientY - startY);
-    container.style.transform = `translateY(${currentY}px)`;
-    container.style.opacity = String(Math.max(0.35, 1 - currentY / 360));
+    
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+    }
+    
+    rafId = requestAnimationFrame(() => {
+      if (!isDragging) return;
+      container.style.transform = `translateY(${currentY}px)`;
+      container.style.opacity = String(Math.max(0.35, 1 - currentY / 360));
+    });
+  };
+
+  const resetContainerStyle = () => {
+    container.style.willChange = "";
+    container.style.transition = "";
+    container.style.transform = "";
+    container.style.opacity = "";
+    container.style.animation = "";
   };
 
   const finishDrag = () => {
     if (!isDragging) return;
     isDragging = false;
-    activeInput = "";
-    container.style.transition = "transform 220ms ease, opacity 220ms ease";
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+
+    container.classList.remove("is-dragging-landscape");
 
     if (currentY > closeThreshold) {
+      // --- 닫기 경로 ---
+      // (Bug 1 fix) 스타일 정리를 closeLandscapeApp() 호출 이전에 미리 수행한다.
+      // try-catch 안에 closeLandscapeApp()을 넣으면 내부 에러가 조용히 삼켜져
+      // renderHome()이 실행되지 않아 홈 화면이 나타나지 않는 현상이 생긴다.
+      container.style.transition = "transform 220ms ease, opacity 220ms ease";
       container.style.transform = "translateY(100%)";
       container.style.opacity = "0";
-      window.setTimeout(() => closeLandscapeApp(), 220);
+      window.setTimeout(() => {
+        resetContainerStyle();
+        closeLandscapeApp();
+      }, 220);
     } else {
+      // --- 복귀 경로 ---
+      // (Bug 2 fix) 인라인 transition + transform 제거를 고정 240ms setTimeout 대신
+      // transitionend 이벤트로 처리한다. 고정 타이머가 전환 애니메이션 완료 전에 실행되면
+      // 브라우저가 CSS 기본 animation(scale-up-center, fill-mode:both)을 재활성화해
+      // 패널이 갑자기 scale(0.5)에서 튀어오르는 끊김 현상이 발생한다.
+      // animation: none 인라인 선언으로 scale-up-center 재발동을 완전히 차단한다.
+      container.style.animation = "none";
+      container.style.transition = "transform 220ms ease, opacity 220ms ease";
       container.style.transform = "translateY(0)";
       container.style.opacity = "1";
+
+      const onTransitionEnd = () => resetContainerStyle();
+      container.addEventListener("transitionend", onTransitionEnd, { once: true });
+
+      // transitionend가 발화하지 않는 예외 상황을 대비한 안전망 타이머
       window.setTimeout(() => {
-        container.style.transition = "";
-        container.style.transform = "";
-        container.style.opacity = "";
-      }, 240);
+        container.removeEventListener("transitionend", onTransitionEnd);
+        resetContainerStyle();
+      }, 350);
     }
     currentY = 0;
   };
 
   const cancelDrag = () => {
+    if (!isDragging) return;
     isDragging = false;
-    activeInput = "";
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    container.classList.remove("is-dragging-landscape");
+    resetContainerStyle();
     currentY = 0;
-    container.style.transition = "";
-    container.style.transform = "";
-    container.style.opacity = "";
   };
 
   handle.addEventListener("pointerdown", (event) => {
-    startDrag(event.clientY, "pointer");
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.preventDefault();
+    startDrag(event.clientY);
     try {
       handle.setPointerCapture(event.pointerId);
     } catch {
-      // Pointer capture is best-effort across browser automation surfaces.
+      // Pointer capture is best-effort across environments.
     }
   });
 
   handle.addEventListener("pointermove", (event) => {
-    if (activeInput !== "pointer") return;
+    if (!isDragging) return;
     moveDrag(event.clientY);
   });
 
   handle.addEventListener("pointerup", (event) => {
-    if (activeInput !== "pointer") return;
+    if (!isDragging) return;
+    // (Bug 3 fix) pointerup의 최종 좌표로 currentY를 갱신한다.
+    // 마지막 pointermove와 pointerup 사이에 발생하는 위치 차이(관성·빠른 스와이프)로 인해
+    // moveDrag에서 캡처된 currentY가 실제 손을 뗀 위치와 달라 임계값 판단이 틀어질 수 있다.
+    currentY = Math.max(0, event.clientY - startY);
     try {
       handle.releasePointerCapture(event.pointerId);
-    } catch {
-      // Some browser surfaces release capture automatically.
-    }
+    } catch {}
     finishDrag();
   });
 
-  handle.addEventListener("pointercancel", cancelDrag);
-
-  handle.addEventListener("mousedown", (event) => {
-    if (event.button !== 0 || isDragging) return;
-    event.preventDefault();
-    startDrag(event.clientY, "mouse");
-    const onMouseMove = (moveEvent) => moveDrag(moveEvent.clientY);
-    const onMouseUp = () => {
-      document.removeEventListener("mousemove", onMouseMove);
-      finishDrag();
-    };
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp, { once: true });
+  handle.addEventListener("pointercancel", (event) => {
+    if (!isDragging) return;
+    try {
+      handle.releasePointerCapture(event.pointerId);
+    } catch {}
+    cancelDrag();
   });
-
-  handle.addEventListener("touchstart", (event) => {
-    if (isDragging) return;
-    const touch = event.touches[0];
-    if (!touch) return;
-    event.preventDefault();
-    startDrag(touch.clientY, "touch");
-  }, { passive: false });
-
-  handle.addEventListener("touchmove", (event) => {
-    if (activeInput !== "touch") return;
-    const touch = event.touches[0];
-    if (!touch) return;
-    event.preventDefault();
-    moveDrag(touch.clientY);
-  }, { passive: false });
-
-  handle.addEventListener("touchend", finishDrag);
-  handle.addEventListener("touchcancel", cancelDrag);
 }
 
 function resetMediaAppState() {
@@ -1409,6 +2957,8 @@ function resetMediaAppState() {
   mediaSearchError = "";
   spotifyActiveTab = "home";
   youtubeActiveTab = "home";
+  netflixActiveTab = "home";
+  netflixPlaying = false;
   shortcutGrid.classList.remove("media-landscape-host");
   appsLayer.classList.remove("media-app-open");
 }
@@ -1437,6 +2987,8 @@ function openLandscapeMediaApp(id) {
   mediaSearchError = "";
   spotifyActiveTab = "home";
   youtubeActiveTab = "home";
+  netflixActiveTab = "home";
+  netflixPlaying = false;
   renderMediaApp();
 
 }
@@ -1911,10 +3463,13 @@ function renderMediaApp() {
       : "";
   appsLayer.classList.toggle("media-app-open", !isLandscapeHost);
   shortcutGrid.classList.toggle("media-landscape-host", isLandscapeHost);
+  const isNetflixApp = activeMediaApp === "netflix";
   if (isSpotifyApp) {
     host.innerHTML = renderSpotifyTabletPanel(meta, results, selected, fallback);
   } else if (isYoutubeApp) {
     host.innerHTML = renderYouTubeTabletPanel(meta, results, selected, fallback);
+  } else if (isNetflixApp) {
+    host.innerHTML = renderNetflixTabletPanel(meta, results, selected, fallback);
   } else {
     host.innerHTML = `
       <section class="media-app-panel" aria-label="${meta.title}">
@@ -2033,6 +3588,103 @@ function renderMediaApp() {
       isPlaying = true;
       updateMediaUI();
     }
+  });
+
+  // Netflix scroll handler for header opacity & search toggle
+  if (isNetflixApp) {
+    const scrollContent = host.querySelector(".netflix-scrollable-content");
+    const topBar = host.querySelector("#netflixTopBar");
+    if (scrollContent && topBar) {
+      scrollContent.addEventListener("scroll", () => {
+        if (scrollContent.scrollTop > 20) {
+          topBar.classList.add("scrolled");
+        } else {
+          topBar.classList.remove("scrolled");
+        }
+      });
+      if (scrollContent.scrollTop > 20) {
+        topBar.classList.add("scrolled");
+      }
+    }
+
+    const searchToggle = host.querySelector("#netflixSearchToggle");
+    const searchOverlay = host.querySelector("#netflixSearchOverlay");
+    if (searchToggle && searchOverlay) {
+      searchToggle.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const isVisible = searchOverlay.style.display === "block";
+        searchOverlay.style.display = isVisible ? "none" : "block";
+        if (!isVisible) {
+          searchOverlay.querySelector("input")?.focus();
+        }
+      });
+    }
+  }
+
+  // Netflix tab switching
+  host.querySelectorAll("[data-netflix-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      netflixActiveTab = button.dataset.netflixTab;
+      selectedMediaId = null;
+      netflixPlaying = false;
+      renderMediaApp();
+    });
+  });
+
+  // Netflix sub-tab switching
+  host.querySelectorAll("[data-netflix-sub-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const subTab = button.dataset.netflixSubTab;
+      if (subTab === "categories") {
+        // Toggle categories or simply reset to home for this prototype
+        netflixActiveTab = "home";
+      } else {
+        netflixActiveTab = subTab;
+      }
+      selectedMediaId = null;
+      netflixPlaying = false;
+      renderMediaApp();
+    });
+  });
+
+  // Netflix back to list
+  host.querySelectorAll("[data-netflix-back]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedMediaId = null;
+      renderMediaApp();
+    });
+  });
+
+  // Netflix play content
+  host.querySelectorAll("[data-netflix-play]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (button.dataset.netflixHeroId) {
+        selectedMediaId = button.dataset.netflixHeroId;
+      }
+      netflixPlaying = true;
+      renderMediaApp();
+    });
+  });
+
+  // Netflix back from video player
+  host.querySelector("[data-netflix-player-back]")?.addEventListener("click", () => {
+    netflixPlaying = false;
+    renderMediaApp();
+  });
+
+  // Netflix toggle "My List"
+  host.querySelectorAll("[data-netflix-mylist-toggle]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const id = button.dataset.netflixMylistToggle;
+      if (netflixMyList.includes(id)) {
+        netflixMyList = netflixMyList.filter(item => item !== id);
+      } else {
+        netflixMyList.push(id);
+      }
+      renderMediaApp();
+    });
   });
 }
 
@@ -5895,21 +7547,35 @@ function renderHome() {
 
   shortcutGrid.innerHTML = "";
   visibleEntries.forEach(([id, index]) => {
-    const item = functionById(id);
     const card = document.createElement("button");
-    card.className = "shortcut-card";
-    card.classList.toggle("favorite-card", Boolean(FAVORITE_TILE_ITEMS[item.id]));
     card.type = "button";
     card.dataset.index = index;
-    card.setAttribute("aria-label", `${item.title} card, long press to edit`);
-    card.innerHTML = `
-      ${cardIcon(item)}
-      <span class="card-copy">
-        <strong>${item.title}</strong>
-        <span>${item.desc}</span>
-      </span>
-      ${favoriteTileGrid(item.id)}
-    `;
+
+    if (!id) {
+      card.className = "shortcut-card empty-card";
+      card.setAttribute("aria-label", "비어 있는 카드, long press to edit");
+      card.innerHTML = `
+        <span class="card-icon empty-card-icon" aria-hidden="true"></span>
+        <span class="card-copy">
+          <strong>비어 있음</strong>
+          <span>설정된 앱이 없습니다.</span>
+        </span>
+      `;
+    } else {
+      const item = functionById(id);
+      card.className = "shortcut-card";
+      card.classList.toggle("favorite-card", Boolean(FAVORITE_TILE_ITEMS[item.id]));
+      card.setAttribute("aria-label", `${item.title} card, long press to edit`);
+      card.innerHTML = `
+        ${cardIcon(item)}
+        <span class="card-copy">
+          <strong>${item.title}</strong>
+          <span>${item.desc}</span>
+        </span>
+        ${favoriteTileGrid(item.id)}
+      `;
+    }
+
     card.addEventListener("pointerdown", startLongPress);
     card.addEventListener("pointerup", cancelLongPress);
     card.addEventListener("pointerleave", cancelLongPress);
@@ -5952,7 +7618,7 @@ function launchAppOrWidget(id) {
     mirroring: "connection"
   };
 
-  if (id === "spotify" || id === "youtube") {
+  if (id === "spotify" || id === "youtube" || id === "netflix") {
     rememberRecentApp(id);
     openLandscapeMediaApp(id);
     return;
@@ -6057,22 +7723,25 @@ function renderPalette() {
   });
 }
 
-function slotTitle(index) {
-  return index < 2 ? "Favorite shortcuts" : "Favorite apps";
-}
-
 function renderEditSlots() {
   editSlots.forEach((slot) => {
     const index = Number(slot.dataset.widgetIndex);
-    const item = functionById(draftCards[index]);
+    const appId = draftCards[index];
+    if (!appId) {
+      slot.className = "edit-slot widget-slot empty-slot";
+      slot.draggable = true;
+      slot.innerHTML = `
+        <span class="empty-slot-icon" aria-hidden="true"></span>
+        <strong class="empty-slot-label">비어 있음</strong>
+      `;
+      return;
+    }
+    const item = functionById(appId);
     slot.className = "edit-slot widget-slot";
     slot.draggable = true;
     slot.innerHTML = `
       ${cardIcon(item)}
-      <div>
-        <strong>${item.title}</strong>
-        <span>${slotTitle(index)}</span>
-      </div>
+      <strong>${item.title}</strong>
     `;
   });
 }
@@ -6084,11 +7753,29 @@ function markDraftChanged() {
 
 function applyAppToSlot(slotIndex, appId) {
   if (!appId) return;
+  // Dedup: if this app is already in another slot, clear it from there first
+  const existingIndex = draftCards.indexOf(appId);
+  if (existingIndex !== -1 && existingIndex !== slotIndex) {
+    draftCards[existingIndex] = null;
+  }
   draftCards[slotIndex] = appId;
   selectedAppId = null;
   renderPalette();
   renderEditSlots();
   markDraftChanged();
+
+  // Trigger double flash animation for the newly placed slot
+  const targetSlot = Array.from(editSlots).find(
+    (slot) => Number(slot.dataset.widgetIndex) === slotIndex
+  );
+  if (targetSlot) {
+    targetSlot.classList.remove("slot-flash");
+    void targetSlot.offsetWidth; // Reflow to restart animation
+    targetSlot.classList.add("slot-flash");
+    targetSlot.addEventListener("animationend", () => {
+      targetSlot.classList.remove("slot-flash");
+    }, { once: true });
+  }
 }
 
 function moveWidget(fromIndex, toIndex) {
@@ -6210,6 +7897,16 @@ function updateClock() {
   hours = hours % 12;
   hours = hours ? hours : 12;
   clock.textContent = `${ampm} ${hours}:${minutes}`;
+}
+
+function triggerGnbBounce(element) {
+  if (!element) return;
+  element.classList.remove("gnb-icon-bounce");
+  void element.offsetWidth; // Force reflow
+  element.classList.add("gnb-icon-bounce");
+  element.addEventListener("animationend", () => {
+    element.classList.remove("gnb-icon-bounce");
+  }, { once: true });
 }
 
 modeTabs.forEach((tab) => {
