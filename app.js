@@ -534,86 +534,87 @@ const MEDIA_CATALOG = [
   {
     id: "netflix-mylist-0",
     type: "netflix",
-    title: "슬기로운 의사생활",
-    creator: "신원호 감독",
-    description: "인생의 희로애락이 공존하는 병원에서 보낸 20년 지기 의사 친구들의 일상을 그린 따뜻한 인간미 가득한 드라마.",
+    title: "스물다섯 스물하나",
+    creator: "이나정 작가 / 김태리, 남주혁",
+    description: "1998년 IMF로 꿈을 빼앗긴 스물둘의 나희도와 스물여덟의 백이진이 스물다섯과 스물하나에 서로 사랑하고 성장해가는 청춘 로맨스.",
     imageUrl: "./assets/netflix/img2_row1_col0.jpg",
     category: "TV-Shows",
-    genre: "K-Drama / 메디컬 / 라이프",
+    genre: "K-Drama / 청춘 / 로맨스 / 스포츠",
     rating: "15+",
-    duration: "시즌 2개"
+    duration: "시즌 1개"
   },
   {
     id: "netflix-mylist-1",
     type: "netflix",
-    title: "D.P. (디피)",
-    creator: "한준희 감독 / 정해인, 구교환",
-    description: "헌병대 소속 군무 이탈 체포조 준호와 호열이 탈영병들을 쫓으며 직면하게 되는 안타까운 진실들의 추적기.",
+    title: "약한영웅 Class 1",
+    creator: "최현욱, 이준영, 홍경",
+    description: "완력은 없지만 뛰어난 두뇌로 학교 폭력에 맞서는 소년 연시은의 치열한 학원 액션 서바이벌.",
     imageUrl: "./assets/netflix/img2_row1_col1.jpg",
     category: "TV-Shows",
-    genre: "K-Drama / 밀리터리 / 범죄 / 드라마",
+    genre: "K-Drama / 액션 / 학원 / 청춘",
     rating: "18+",
     duration: "시즌 2개"
   },
   {
     id: "netflix-mylist-2",
     type: "netflix",
-    title: "나의 해방일지",
-    creator: "박해영 작가 / 이민기, 김지원, 손석구",
-    description: "견딜 수 없이 답답한 경기도 삼남매의 해방기. 외딴 마을에 굴러들어 온 정체불명의 외지인 구씨와 그들이 그리는 힐링 휴먼 드라마.",
+    title: "더 글로리",
+    creator: "김은숙 작가 / 송혜교, 이도현",
+    description: "학교 폭력 피해자 문동은이 가해자들에게 처절한 복수를 준비하며 20년을 벼려온 서늘하고 치밀한 복수극.",
     imageUrl: "./assets/netflix/img2_row1_col2.jpg",
     category: "TV-Shows",
-    genre: "K-Drama / 라이프 / 힐링 / 멜로",
-    rating: "15+",
+    genre: "K-Drama / 복수 / 스릴러 / 드라마",
+    rating: "18+",
     duration: "시즌 1개"
   },
   {
     id: "netflix-mylist-3",
     type: "netflix",
-    title: "브레이킹 배드",
-    creator: "빈스 길리건 / 브라이언 크랜스톤",
-    description: "시한부 판정을 받은 평범한 고등학교 화학 교사가 가족에게 재산을 남기기 위해 전 제자와 마약 사업에 손대며 괴물로 변해간다.",
+    title: "스트리트 브리거스",
+    creator: "이제훈, 박정민",
+    description: "거리의 전설들이 다시 뭉쳐 조직 내부의 배신과 권력 다툼 속에서 살아남기 위한 치열한 사투를 펼치는 액션 드라마.",
     imageUrl: "./assets/netflix/img2_row1_col3.jpg",
     category: "TV-Shows",
-    genre: "드라마 / 범죄 / 스릴러",
+    genre: "K-Drama / 액션 / 범죄",
     rating: "18+",
-    duration: "시즌 5개"
+    duration: "시즌 1개"
   },
   {
     id: "netflix-mylist-4",
     type: "netflix",
-    title: "그해 우리는 (M)",
-    creator: "청춘 로맨스",
-    description: "다큐멘터리 역주행으로 얽힌 헤어진 옛 연인의 티격태격 감정 재점화 청춘 로맨스.",
+    title: "눈물의 여왕",
+    creator: "박지은 작가 / 김수현, 김지원",
+    description: "대한민국 1등 재벌가 퀸즈 백화점 상속녀와 평범한 시골 청년의 결혼 3년 차 위기를 그린 로맨틱 드라마.",
     imageUrl: "./assets/netflix/img2_row1_col4.jpg",
     category: "TV-Shows",
-    genre: "K-Drama / 로맨스 / 청춘",
+    genre: "K-Drama / 로맨스 / 코미디 / 드라마",
     rating: "15+",
     duration: "시즌 1개"
   },
   {
     id: "netflix-mylist-5",
     type: "netflix",
-    title: "중증외상센터",
-    creator: "메디컬 스릴러",
-    description: "사명감 하나로 죽어가는 환자를 살려내는 중증외상센터 의료진의 긴박하고 치열한 응급 구명 투쟁 드라마.",
+    title: "미스터 션샤인",
+    creator: "김은숙 작가 / 이병헌, 김태리",
+    description: "신미양요 때 미국 군함에 몸을 실은 소년이 미군 장교가 되어 조선으로 돌아오며 펼쳐지는 구한말 격동의 서사 로맨스.",
     imageUrl: "./assets/netflix/img2_row1_col5.jpg",
     category: "TV-Shows",
-    genre: "K-Drama / 메디컬 / 휴먼",
+    genre: "K-Drama / 역사 / 로맨스 / 시대극",
     rating: "15+",
     duration: "시즌 1개"
   },
   {
     id: "netflix-mylist-6",
     type: "netflix",
-    title: "미스터 션샤인",
-    creator: "김은숙 작가 / 이병헌, 김태리",
-    description: "신미양요 때 군함에 승선해 미국에 떨어진 소년이 미국 군인 신분으로 조국인 조선에 돌아와 주둔하며 벌어지는 구한말 격동의 서사.",
+    title: "쩐양먹기",
+    creator: "K-푸드 예능",
+    description: "전국 방방곡곡 숨어있는 골목 맛집과 길거리 음식을 찾아 떠나는 유쾌하고 맛있는 먹방 여행 예능.",
     imageUrl: "./assets/netflix/img2_row1_col6.jpg",
     category: "TV-Shows",
-    genre: "K-Drama / 역사 / 로맨스 / 시대극",
-    rating: "15+",
-    duration: "시즌 1개"
+    genre: "K-예능 / 먹방 / 여행 / 리얼리티",
+    rating: "All",
+    duration: "신규 에피소드",
+    badge: "신규 에피소드"
   },
   {
     id: "netflix-mylist-7",
@@ -7745,6 +7746,15 @@ function handleCardClick(event) {
   launchAppOrWidget(cardId);
 }
 
+function setDragGhost(event, el) {
+  const rect = el.getBoundingClientRect();
+  const ghost = el.cloneNode(true);
+  ghost.style.cssText = `position:fixed;top:-9999px;left:-9999px;width:${rect.width}px;height:${rect.height}px;pointer-events:none;opacity:0.9;border-radius:12px;overflow:hidden;`;
+  document.body.appendChild(ghost);
+  event.dataTransfer.setDragImage(ghost, rect.width / 2, rect.height / 2);
+  requestAnimationFrame(() => ghost.remove());
+}
+
 function renderPalette() {
   appPalette.innerHTML = "";
 
@@ -7765,6 +7775,7 @@ function renderPalette() {
     app.addEventListener("dragstart", (event) => {
       event.dataTransfer.setData("text/plain", item.id);
       event.dataTransfer.effectAllowed = "copy";
+      setDragGhost(event, app);
     });
     app.classList.toggle("selected", selectedAppId === item.id);
     appPalette.appendChild(app);
@@ -8181,6 +8192,7 @@ editSlots.forEach((slot) => {
     draggedWidgetIndex = Number(slot.dataset.widgetIndex);
     event.dataTransfer.setData("application/x-widget-index", String(draggedWidgetIndex));
     event.dataTransfer.effectAllowed = "move";
+    setDragGhost(event, slot);
   });
   slot.addEventListener("dragover", (event) => {
     event.preventDefault();

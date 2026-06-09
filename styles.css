@@ -152,6 +152,9 @@ body {
   place-items: center;
   color: var(--pleos-text-primary);
   overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .file-warning {
@@ -11534,6 +11537,9 @@ svg.gnb-apps-icon {
   flex-shrink: 0;
   z-index: 110;
   transition: background 150ms;
+  padding: 16px 40px;
+  box-sizing: content-box;
+  background-clip: content-box;
 }
 .apps-drag-handle:active {
   cursor: grabbing;
