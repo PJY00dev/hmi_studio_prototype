@@ -3790,11 +3790,12 @@ function renderApps() {
 
   // Attach Climate listeners
   appsLayer.querySelectorAll(".apps-climate-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
       const action = btn.dataset.action;
       launcherClimateState[action] = !launcherClimateState[action];
+      btn.classList.toggle("active", launcherClimateState[action]);
       renderGnbClimateControls();
-      renderApps();
     });
   });
 
