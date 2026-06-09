@@ -15,6 +15,9 @@
       if (window.location.protocol === "file:") {
         document.documentElement.classList.add("file-protocol");
       }
+      if (navigator.maxTouchPoints > 0 || 'ontouchstart' in window) {
+        document.documentElement.classList.add("touch-device");
+      }
     </script>
     <main class="stage" aria-label="Responsive Connect HMI prototype">
       <section class="tablet">
