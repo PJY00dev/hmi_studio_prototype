@@ -14291,37 +14291,201 @@ svg.gnb-apps-icon {
   border-color: #ffffff;
 }
 
-/* GNB Icon Bounce Micro-Animation */
+/* GNB Icon Bounce Micro-Animation with Squash & Stretch Physics */
 @keyframes gnbIconBounce {
-  0% {
-    transform: translateY(0) scale(1, 1);
-  }
-  12% {
-    transform: translateY(1px) scale(1.06, 0.96);
-  }
-  28% {
-    transform: translateY(-12px) scale(0.97, 1.06);
-  }
-  42% {
-    transform: translateY(1px) scale(1.06, 0.96);
-  }
-  62% {
-    transform: translateY(-8px) scale(0.98, 1.04);
-  }
-  76% {
-    transform: translateY(0.5px) scale(1.03, 0.98);
-  }
-  88% {
-    transform: translateY(-2px) scale(1, 1.01);
-  }
-  100% {
-    transform: translateY(0) scale(1, 1);
-  }
+  0% { transform: translateY(0) scale(1, 1); }
+  15% { transform: translateY(2px) scale(1.12, 0.88); }
+  30% { transform: translateY(-14px) scale(0.9, 1.15); }
+  45% { transform: translateY(1px) scale(1.05, 0.95); }
+  60% { transform: translateY(-4px) scale(0.98, 1.02); }
+  75% { transform: translateY(0) scale(1.01, 0.99); }
+  100% { transform: translateY(0) scale(1, 1); }
 }
 
 .gnb-icon-bounce {
-  animation: gnbIconBounce 1.0s ease-in-out both;
+  animation: gnbIconBounce 1.0s cubic-bezier(0.25, 0.8, 0.25, 1.25) both;
   transform-origin: center bottom;
+}
+
+/* Empty Card Pulsing Marching Effect */
+@keyframes emptyCardPulse {
+  0%, 100% {
+    border-color: rgba(19, 20, 23, 0.22);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
+  }
+  50% {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 10px rgba(0, 104, 255, 0.08), 0 4px 15px rgba(0, 104, 255, 0.05);
+  }
+}
+
+.shortcut-card.empty-card {
+  animation: emptyCardPulse 2.0s ease-in-out infinite;
+}
+
+/* Tactile Haptic Press Scale-Down Feedback */
+.shortcut-card:active,
+.palette-app:active,
+.widget-slot:active,
+.gnb-recent-button:active,
+.mode-tab:active,
+.gnb-icon-button:active {
+  transform: scale(0.96) !important;
+  transition: transform 80ms cubic-bezier(0.25, 1, 0.5, 1) !important;
+}
+
+/* Magnet Slot Absorption for Drag-Over */
+.widget-slot {
+  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1), border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.widget-slot.drag-over {
+  transform: scale(1.06) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 8px 24px rgba(0, 104, 255, 0.22) !important;
+}
+
+/* Odometer-like Temperature Transition Styles */
+@keyframes tempRollUp {
+  0% { transform: translateY(8px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes tempRollDown {
+  0% { transform: translateY(-8px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.temp-anim-up {
+  animation: tempRollUp 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.temp-anim-down {
+  animation: tempRollDown 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Live Equalizer Audio Waveform Styling */
+.eq-container {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 18px;
+  width: 22px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.eq-bar {
+  width: 3px;
+  height: 100%;
+  background-color: var(--accent);
+  border-radius: 1px;
+  transform-origin: bottom;
+  animation: bounceEq 1.2s ease-in-out infinite alternate;
+}
+
+.eq-bar:nth-child(2) { animation-delay: 0.25s; animation-duration: 0.8s; }
+.eq-bar:nth-child(3) { animation-delay: 0.5s; animation-duration: 1.4s; }
+.eq-bar:nth-child(4) { animation-delay: 0.1s; animation-duration: 1.0s; }
+
+@keyframes bounceEq {
+  0% { transform: scaleY(0.15); }
+  100% { transform: scaleY(1.0); }
+}
+
+/* Map Zoom Elastic Scale Transitions */
+.map-canvas {
+  transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1.1) !important;
+}
+
+.map-zoom-in {
+  transform: scale(1.025);
+}
+
+.map-zoom-out {
+  transform: scale(0.975);
+}
+
+/* Route Summary Card Slide-In Overshoot Anim */
+@keyframes slideInOvershoot {
+  0% { transform: translateY(100%) scale(0.96); opacity: 0; }
+  70% { transform: translateY(-10px) scale(1.01); opacity: 1; }
+  85% { transform: translateY(2px) scale(0.995); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.route-card-enter {
+  animation: slideInOvershoot 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Floating Artwork Animation */
+@keyframes artFloat {
+  0% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(1.2deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+.album-art-playing {
+  animation: artFloat 4.0s ease-in-out infinite;
+}
+
+/* Hover Zoom & Glow for Media Thumbnails */
+.media-thumb, 
+.netflix-card, 
+.youtube-card, 
+.playlist-item {
+  transition: transform 220ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.media-thumb:hover, 
+.netflix-card:hover, 
+.youtube-card:hover, 
+.playlist-item:hover {
+  transform: scale(1.04) translateY(-2px) !important;
+  box-shadow: 0 12px 32px rgba(0, 104, 255, 0.16), 0 0 0 1.5px var(--accent) !important;
+}
+
+/* Dropdown Menu Wiggle Drop-In Animation */
+@keyframes dropdownWiggle {
+  0% { transform: translateY(-15px) scaleY(0.9); opacity: 0; }
+  60% { transform: translateY(5px) scaleY(1.03); }
+  80% { transform: translateY(-2px) scaleY(0.99); }
+  100% { transform: translateY(0) scaleY(1); opacity: 1; }
+}
+
+.dropdown-enter {
+  animation: dropdownWiggle 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform-origin: top center;
+}
+
+/* Range Slider active knob swell */
+input[type="range"]::-webkit-slider-thumb {
+  transition: transform 120ms cubic-bezier(0.25, 1, 0.5, 1) !important;
+}
+
+input[type="range"]:active::-webkit-slider-thumb {
+  transform: scale(1.4) !important;
+}
+
+/* Toggle Switch physics squash roll */
+.toggle-switch span {
+  transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1), width 260ms ease !important;
+}
+
+.toggle-switch:active span {
+  width: 28px !important;
+}
+
+/* Battery Charging Energy Flow Laser sweep */
+@keyframes laserSweep {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.energy-card-charging {
+  background: linear-gradient(90deg, transparent 30%, rgba(63, 199, 120, 0.22) 50%, transparent 70%) !important;
+  background-size: 200% 100% !important;
+  animation: laserSweep 2.2s linear infinite !important;
 }
 
 

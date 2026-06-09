@@ -1456,11 +1456,26 @@ function climateTemperatureProgress(value) {
   return ((normalizedValue - CLIMATE_TEMP_MIN) / CLIMATE_TEMP_RANGE) * 100;
 }
 
-function renderClimateTemperatures() {
+function renderClimateTemperatures(animDirection = null) {
   climateTempValues.forEach((element) => {
     const zone = element.dataset.climateTempValue;
     const value = normalizeClimateTemperature(state.climateTemperatures?.[zone], CLIMATE_TEMP_MID);
-    element.textContent = formatClimateTemperature(value);
+    const newText = formatClimateTemperature(value);
+    
+    if (element.textContent !== newText && animDirection) {
+      const animClass = animDirection === "up" ? "temp-anim-up" : "temp-anim-down";
+      element.classList.remove("temp-anim-up", "temp-anim-down");
+      void element.offsetWidth; // force reflow
+      element.classList.add(animClass);
+      
+      const onAnimEnd = () => {
+        element.classList.remove(animClass);
+        element.removeEventListener("animationend", onAnimEnd);
+      };
+      element.addEventListener("animationend", onAnimEnd);
+    }
+    
+    element.textContent = newText;
     element.closest(".gnb-climate-readout")?.classList.toggle(
       "is-extreme-temp",
       value <= CLIMATE_TEMP_MIN || value >= CLIMATE_TEMP_MAX
@@ -1474,7 +1489,7 @@ function adjustClimateTemperature(zone, step) {
   if (!["left", "right"].includes(zone)) return;
   const currentValue = normalizeClimateTemperature(state.climateTemperatures[zone], 20);
   state.climateTemperatures[zone] = normalizeClimateTemperature(currentValue + step, currentValue);
-  renderClimateTemperatures();
+  renderClimateTemperatures(step > 0 ? "up" : "down");
   saveState();
 }
 
@@ -1527,7 +1542,7 @@ function openClimateKnob(zone, anchor) {
   anchor.setAttribute("aria-expanded", "true");
 
   const popover = document.createElement("div");
-  popover.className = "gnb-climate-popover";
+  popover.className = "gnb-climate-popover dropdown-enter";
   popover.dataset.climateZone = zone;
   popover.innerHTML = `
     <div class="gnb-climate-slider-track" role="slider" aria-label="${zone === "left" ? "운전석" : "동승석"} 온도" aria-valuemin="${CLIMATE_TEMP_MIN}" aria-valuemax="${CLIMATE_TEMP_MAX}" aria-valuenow="${normalizeClimateTemperature(state.climateTemperatures?.[zone], CLIMATE_TEMP_MID)}" tabindex="0">
@@ -1585,7 +1600,8 @@ function cardIcon(item, className = "card-icon") {
   const isBrand = [
     "navigation", "music", "message", "call", "bluetooth", "radio", 
     "energy", "blackbox", "camera", "app-market", "vehicle", "driving", 
-    "android-auto", "carplay", "mirroring", "gleo-ai"
+    "android-auto", "carplay", "mirroring", "gleo-ai",
+    "youtube", "spotify", "netflix", "chromium"
   ].includes(item.icon);
   const extraClass = isBrand ? " brand-icon" : "";
   return `<span class="${className}${extraClass} launcher-icon-${item.icon}" style="--card-color: ${item.color}" aria-hidden="true">${svgIcon(item.icon)}</span>`;
@@ -1624,7 +1640,8 @@ function renderRecentDockApps() {
     const isBrand = [
       "navigation", "music", "message", "call", "bluetooth", "radio", 
       "energy", "blackbox", "camera", "app-market", "vehicle", "driving", 
-      "android-auto", "carplay", "mirroring", "gleo-ai"
+      "android-auto", "carplay", "mirroring", "gleo-ai",
+      "youtube", "spotify", "netflix", "chromium"
     ].includes(app.icon);
     const brandClass = isBrand ? " brand-icon" : "";
 
@@ -6931,6 +6948,9 @@ function renderRouteOptions(routes) {
   redrawRoutes();
 
   routeCard.hidden = false;
+  routeCard.classList.remove("route-card-enter");
+  void routeCard.offsetWidth; // force reflow
+  routeCard.classList.add("route-card-enter");
 }
 
 /* ===== Navigation Simulation and Controls ===== */
@@ -7515,6 +7535,18 @@ function panToCurrentPosition() {
 function zoomNaverMap(direction) {
   if (!naverMapReady) return;
   const delta = direction === "in" ? -1 : 1;
+  
+  const canvasEl = document.querySelector(".map-canvas");
+  if (canvasEl) {
+    const animClass = direction === "in" ? "map-zoom-in" : "map-zoom-out";
+    canvasEl.classList.remove("map-zoom-in", "map-zoom-out");
+    void canvasEl.offsetWidth; // force reflow
+    canvasEl.classList.add(animClass);
+    setTimeout(() => {
+      canvasEl.classList.remove(animClass);
+    }, 260);
+  }
+  
   naverMap.setZoom(Math.max(1, naverMap.getZoom() - delta));
 }
 
@@ -7538,9 +7570,21 @@ function renderHome() {
   homeTitle.textContent = meta.title;
   if (destinationInput) destinationInput.value = currentDestinationLabel;
   playlist.textContent = meta.playlist;
-  trackTitle.textContent = meta.trackTitle;
+  
+  if (trackTitle) {
+    if (isPlaying) {
+      trackTitle.innerHTML = `${escapeHtml(meta.trackTitle)}<span class="eq-container" aria-hidden="true"><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span></span>`;
+    } else {
+      trackTitle.textContent = meta.trackTitle;
+    }
+  }
+  
   artist.textContent = meta.artist;
   albumArt.textContent = meta.album;
+  if (albumArt) {
+    albumArt.classList.toggle("album-art-playing", isPlaying);
+  }
+  
   cardLimit.textContent = isNarrow ? "Expanded map" : "Up to 4 cards";
   workspace.classList.toggle("compact-cards", isNarrow);
   workspace.classList.toggle("narrow-workspace", isNarrow);
@@ -7564,6 +7608,9 @@ function renderHome() {
     } else {
       const item = functionById(id);
       card.className = "shortcut-card";
+      if (item.id === "energy") {
+        card.classList.add("energy-card-charging");
+      }
       card.classList.toggle("favorite-card", Boolean(FAVORITE_TILE_ITEMS[item.id]));
       card.setAttribute("aria-label", `${item.title} card, long press to edit`);
       card.innerHTML = `
@@ -8200,10 +8247,19 @@ function updateMediaUI() {
   }
   
   // Landscape
-  if (trackTitle) trackTitle.textContent = trackName;
+  if (trackTitle) {
+    if (isPlaying) {
+      trackTitle.innerHTML = `${escapeHtml(trackName)}<span class="eq-container" aria-hidden="true"><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span></span>`;
+    } else {
+      trackTitle.textContent = trackName;
+    }
+  }
   if (artist) artist.textContent = artistName;
   if (playlist) playlist.textContent = playlistName;
-  if (albumArt) albumArt.textContent = albumName;
+  if (albumArt) {
+    albumArt.textContent = albumName;
+    albumArt.classList.toggle("album-art-playing", isPlaying);
+  }
   
   // Play button state update
   const playBtn = document.getElementById("playBtn");
@@ -8346,6 +8402,9 @@ function toggleStatusPopover(card) {
   closeAllStatusOverlays();
   if (shouldOpen) {
     card.removeAttribute("hidden");
+    card.classList.remove("dropdown-enter");
+    void card.offsetWidth; // force reflow
+    card.classList.add("dropdown-enter");
   }
 }
 

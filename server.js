@@ -48,6 +48,20 @@ async function loadEnvFile(filePath = join(root, ".env"), options = {}) {
 
 await loadEnvFile();
 
+async function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 8000 } = options;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(resource, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
 const port = Number(process.env.PORT || 8765);
 const naverMapsApiKeyId = process.env.NAVER_MAPS_API_KEY_ID || process.env.NCP_API_KEY_ID || "";
 const naverMapsApiKey = process.env.NAVER_MAPS_API_KEY || process.env.NCP_API_KEY || "";
@@ -165,7 +179,7 @@ async function handleDirections(request, response, url) {
 
   const option = url.searchParams.get("option") || "traoptimal";
   const directionsUrl = buildNaverDirectionsUrl({ origin, destination, option });
-  const naverResponse = await fetch(directionsUrl, {
+  const naverResponse = await fetchWithTimeout(directionsUrl, {
     headers: {
       "x-ncp-apigw-api-key-id": naverMapsApiKeyId,
       "x-ncp-apigw-api-key": naverMapsApiKey
@@ -188,7 +202,7 @@ async function handleLocalSearch(request, response, url) {
   if (isValidNaverMapKey(naverMapsApiKeyId) && isValidNaverMapKey(naverMapsApiKey)) {
     try {
       const geocodeUrl = buildNaverGeocodeUrl({ query });
-      const geocodeResponse = await fetch(geocodeUrl, {
+      const geocodeResponse = await fetchWithTimeout(geocodeUrl, {
         headers: {
           "x-ncp-apigw-api-key-id": naverMapsApiKeyId,
           "x-ncp-apigw-api-key": naverMapsApiKey
@@ -218,7 +232,7 @@ async function handleLocalSearch(request, response, url) {
   if (naverSearchClientId && naverSearchClientSecret) {
     try {
       const searchUrl = buildNaverLocalSearchUrl({ query });
-      const searchResponse = await fetch(searchUrl, {
+      const searchResponse = await fetchWithTimeout(searchUrl, {
         headers: {
           "X-Naver-Client-Id": naverSearchClientId,
           "X-Naver-Client-Secret": naverSearchClientSecret
@@ -298,7 +312,7 @@ async function handleYouTubeSearch(response, query, provider) {
   searchUrl.searchParams.set("maxResults", "12");
   searchUrl.searchParams.set("key", youtubeApiKey);
 
-  const youtubeResponse = await fetch(searchUrl, {
+  const youtubeResponse = await fetchWithTimeout(searchUrl, {
     headers: {
       "Accept": "application/json"
     }
@@ -347,7 +361,7 @@ async function getSpotifyAccessToken() {
     return spotifyAccessToken;
   }
 
-  const tokenResponse = await fetch("https://accounts.spotify.com/api/token", {
+  const tokenResponse = await fetchWithTimeout("https://accounts.spotify.com/api/token", {
     method: "POST",
     headers: {
       "Authorization": `Basic ${Buffer.from(`${spotifyClientId}:${spotifyClientSecret}`).toString("base64")}`,
@@ -389,7 +403,7 @@ async function handleSpotifySearch(response, query) {
   searchUrl.searchParams.set("type", "track");
   searchUrl.searchParams.set("limit", "10"); // Dev mode cap: max 10
 
-  const spotifyResponse = await fetch(searchUrl, {
+  const spotifyResponse = await fetchWithTimeout(searchUrl, {
     headers: {
       "Authorization": `Bearer ${accessToken}`,
       "Accept": "application/json"
