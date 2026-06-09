@@ -9037,6 +9037,16 @@ svg.gnb-apps-icon {
   }
 }
 
+.status-fullscreen-btn {
+  display: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .status-fullscreen-btn {
+    display: flex;
+  }
+}
+
 /* ===== Pleos Connect Navigation UI ===== */
 
 .nav-search-trigger {

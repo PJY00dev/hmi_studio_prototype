@@ -1,0 +1,9 @@
+{
+  "name": "Vehicle HMI Prototype",
+  "short_name": "HMI",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#131417",
+  "theme_color": "#131417",
+  "start_url": "/"
+}

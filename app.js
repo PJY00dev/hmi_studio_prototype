@@ -8371,6 +8371,23 @@ const statusBarNotificationBtn = document.getElementById("statusBarNotificationB
 const statusBarBluetoothBtn = document.getElementById("statusBarBluetoothBtn");
 const statusBarWifiBtn = document.getElementById("statusBarWifiBtn");
 
+const statusFullscreenBtn = document.getElementById("statusFullscreenBtn");
+if (statusFullscreenBtn) {
+  const updateFullscreenIcon = () => {
+    const isFs = !!document.fullscreenElement;
+    const iconEl = statusFullscreenBtn.querySelector(".status-icon");
+    if (iconEl) iconEl.innerHTML = svgIcon(isFs ? "fullscreen-exit" : "fullscreen");
+  };
+  statusFullscreenBtn.addEventListener("click", () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  });
+  document.addEventListener("fullscreenchange", updateFullscreenIcon);
+}
+
 const statusBarVolumeCard = document.getElementById("statusBarVolumeCard");
 const statusBarProfileCard = document.getElementById("statusBarProfileCard");
 const statusBarNotificationCard = document.getElementById("statusBarNotificationCard");

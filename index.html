@@ -6,6 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="/manifest.json" />
     <title>Vehicle HMI Prototype</title>
     <link rel="stylesheet" href="./styles.css?v=145" />
   </head>
@@ -72,6 +73,9 @@
                 <span class="status-icon" data-static-icon="signal"></span>
               </span>
               <button class="status-edit" id="enterEdit" type="button" style="display: none;">Edit</button>
+              <button class="status-btn status-fullscreen-btn" id="statusFullscreenBtn" type="button" aria-label="전체화면">
+                <span class="status-icon" data-static-icon="fullscreen"></span>
+              </button>
               <!-- 8. 한글 시계 -->
               <span id="clock">오후 11:30</span>
             </div>
