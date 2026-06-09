@@ -9030,6 +9030,13 @@ svg.gnb-apps-icon {
   }
 }
 
+@media (hover: none) and (pointer: coarse) {
+  .screen {
+    border: none;
+    border-radius: 0;
+  }
+}
+
 /* ===== Pleos Connect Navigation UI ===== */
 
 .nav-search-trigger {
