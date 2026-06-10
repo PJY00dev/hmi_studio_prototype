@@ -8219,6 +8219,116 @@ editSlots.forEach((slot) => {
   });
 });
 
+// ── Touch Drag-and-Drop emulation (Android / Samsung Browser) ──────────────
+// HTML5 DnD API is not fired on Android touch events.
+// We emulate it using touchstart / touchmove / touchend on the editLayer.
+(function initTouchDnD() {
+  if (navigator.maxTouchPoints === 0 && !("ontouchstart" in window)) return;
+
+  let drag = null; // active drag state
+
+  function findSlot(x, y) {
+    // Temporarily hide the ghost so elementFromPoint sees what's underneath
+    if (drag?.ghost) drag.ghost.style.visibility = "hidden";
+    const el = document.elementFromPoint(x, y);
+    if (drag?.ghost) drag.ghost.style.visibility = "";
+    return el ? el.closest("[data-widget-index]") : null;
+  }
+
+  function clearHighlights() {
+    editLayer.querySelectorAll(".edit-slot.drag-over").forEach((s) =>
+      s.classList.remove("drag-over")
+    );
+  }
+
+  editLayer.addEventListener("touchstart", (e) => {
+    const origin = e.target.closest(".palette-app, .edit-slot");
+    if (!origin) return;
+    const t = e.touches[0];
+    drag = {
+      origin,
+      appId: origin.classList.contains("palette-app") ? origin.dataset.appId : null,
+      widgetIndex: origin.hasAttribute("data-widget-index")
+        ? Number(origin.dataset.widgetIndex)
+        : null,
+      startX: t.clientX,
+      startY: t.clientY,
+      ghost: null,
+      started: false,
+    };
+  }, { passive: true });
+
+  editLayer.addEventListener("touchmove", (e) => {
+    if (!drag) return;
+    const t = e.touches[0];
+    const dx = t.clientX - drag.startX;
+    const dy = t.clientY - drag.startY;
+
+    // Start drag only after moving 8 px (distinguishes tap from drag)
+    if (!drag.started) {
+      if (Math.sqrt(dx * dx + dy * dy) < 8) return;
+      drag.started = true;
+
+      // Create ghost element
+      const rect = drag.origin.getBoundingClientRect();
+      const g = drag.origin.cloneNode(true);
+      g.style.cssText = [
+        "position:fixed",
+        `width:${rect.width}px`,
+        `height:${rect.height}px`,
+        "pointer-events:none",
+        "opacity:0.88",
+        "border-radius:12px",
+        "z-index:9999",
+        "transform:scale(1.06)",
+        "box-shadow:0 8px 28px rgba(0,0,0,0.28)",
+        "transition:transform 100ms ease",
+        `left:${rect.left}px`,
+        `top:${rect.top}px`,
+      ].join(";");
+      document.body.appendChild(g);
+      drag.ghost = g;
+    }
+
+    e.preventDefault(); // Prevent page scroll during drag
+
+    // Move ghost centered on finger
+    const gw = parseFloat(drag.ghost.style.width);
+    const gh = parseFloat(drag.ghost.style.height);
+    drag.ghost.style.left = `${t.clientX - gw / 2}px`;
+    drag.ghost.style.top  = `${t.clientY - gh / 2}px`;
+
+    // Highlight slot under finger
+    const slot = findSlot(t.clientX, t.clientY);
+    clearHighlights();
+    if (slot) slot.classList.add("drag-over");
+  }, { passive: false });
+
+  function onTouchEnd(e) {
+    if (!drag) return;
+    clearHighlights();
+
+    if (drag.started) {
+      const t = e.changedTouches[0];
+      drag.ghost?.remove();
+      const slot = findSlot(t.clientX, t.clientY);
+      if (slot) {
+        const slotIndex = Number(slot.dataset.widgetIndex);
+        if (drag.appId) {
+          applyAppToSlot(slotIndex, drag.appId);
+        } else if (drag.widgetIndex !== null) {
+          moveWidget(drag.widgetIndex, slotIndex);
+        }
+      }
+    }
+    drag = null;
+  }
+
+  editLayer.addEventListener("touchend",    onTouchEnd);
+  editLayer.addEventListener("touchcancel", onTouchEnd);
+}());
+// ────────────────────────────────────────────────────────────────────────────
+
 cancelEdit.addEventListener("click", () => {
   editLayer.hidden = true;
   document.querySelector(".screen").classList.remove("is-editing");
