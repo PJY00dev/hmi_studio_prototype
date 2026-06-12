@@ -35,6 +35,31 @@ import {
 
 const FIXED_DRIVING_VIEW_WIDTH = 32.708333;
 
+function createLoader(container, type = 'linear') {
+  if (typeof lottie === 'undefined') return null;
+  const isDark = document.documentElement.classList.contains('dark');
+  const mode = isDark ? 'Dark' : 'Light';
+  const typeName = type === 'tension' ? 'Tension' : 'Linear';
+  return lottie.loadAnimation({
+    container,
+    renderer: 'svg',
+    loop: true,
+    autoplay: true,
+    path: `assets/lottie/Loading_${typeName}_${mode}.json`,
+  });
+}
+
+function destroyLoader(anim) {
+  if (anim) anim.destroy();
+}
+
+function mountLottieLoaders(root = document) {
+  root.querySelectorAll('.lottie-loader:not([data-lottie-mounted])').forEach(el => {
+    el.setAttribute('data-lottie-mounted', '1');
+    createLoader(el, el.dataset.type || 'linear');
+  });
+}
+
 function syncCanvasFitScale() {
   applyCanvasFitScale();
 }
@@ -1554,10 +1579,15 @@ function openClimateKnob(zone, anchor) {
   document.querySelector(".dock")?.appendChild(popover);
 
   const dockRect = dock.getBoundingClientRect();
-  const anchorRect = anchor.getBoundingClientRect();
   const popoverWidth = 400;
-  const anchorCenter = anchorRect.left + anchorRect.width / 2 - dockRect.left;
-  const left = Math.min(dockRect.width - popoverWidth - 24, Math.max(24, anchorCenter - popoverWidth / 2));
+  const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--canvas-scale")) || 1;
+  // Center over the full < temp > group (prev step + readout + next step)
+  // getBoundingClientRect returns viewport px → divide by scale for canvas px
+  const prevStep = anchor.previousElementSibling;
+  const nextStep = anchor.nextElementSibling;
+  const groupCenterVP = ((prevStep || anchor).getBoundingClientRect().left + (nextStep || anchor).getBoundingClientRect().right) / 2;
+  const groupCenterCanvas = (groupCenterVP - dockRect.left) / scale;
+  const left = groupCenterCanvas - popoverWidth / 2;
   popover.style.left = `${left}px`;
   popover.style.bottom = "calc(100% - 16px)";
   updateClimateKnob();
@@ -1911,7 +1941,7 @@ function renderYouTubeTabletPanel(meta, results, selected, fallback) {
     mainContent = `
       <main class="youtube-watch-panel">
         <button type="button" class="youtube-back-button" data-youtube-back aria-label="목록으로">
-          ${svgIcon("chevron-left")}<span>목록으로</span>
+          ${svgIcon("chevron-left")}
         </button>
         <section class="youtube-player-card">
           ${mediaArtwork(selectedItem, "youtube-player-thumb", fallback, selectedItem.title)}
@@ -5352,7 +5382,7 @@ function renderConnectionEmptyDeviceCard(message) {
 }
 
 function renderConnectionSpinner() {
-  return `<span class="connection-spinner" aria-label="검색 중"></span>`;
+  return `<div class="lottie-loader" aria-label="검색 중" role="status"></div>`;
 }
 
 function renderBluetoothSettings() {
@@ -5543,6 +5573,7 @@ function renderConnectionSettings() {
 function rerenderConnectionSettings() {
   settingsDetail.innerHTML = renderConnectionSettings();
   attachConnectionInteractions();
+  mountLottieLoaders(settingsDetail);
 }
 
 function attachConnectionInteractions() {
@@ -6195,6 +6226,7 @@ function renderVehicleSettings() {
   if (category.id === "connection") {
     settingsDetail.innerHTML = renderConnectionSettings();
     attachConnectionInteractions();
+    mountLottieLoaders(settingsDetail);
     return;
   }
 
@@ -7872,6 +7904,8 @@ function showModeToast(mode) {
   modeToast.textContent = mode === "auto"
     ? "자율 주행 홈 화면으로 변경되었습니다"
     : "수동 운전 홈 화면으로 변경되었습니다";
+  modeToast.classList.toggle("mode-auto", mode === "auto");
+  modeToast.classList.toggle("mode-manual", mode === "manual");
   modeToast.hidden = false;
   modeToast.classList.add("show");
   window.clearTimeout(modeToastTimer);
@@ -7889,11 +7923,39 @@ function setMode(mode, options = {}) {
   if (activeMediaHost === "landscape" || !vehicleSettingsLayer.hidden || !appsLayer.hidden) {
     closeLandscapeApp({ renderHomeScreen: false });
   }
+  modeTabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.mode === mode));
+  if (shouldAnnounce) {
+    const panel = document.getElementById("panelLandscape");
+    panel.classList.remove("mode-in");
+    void panel.offsetWidth;
+    panel.classList.add("mode-out");
+    panel.addEventListener("animationend", function handler() {
+      panel.removeEventListener("animationend", handler);
+      activeMode = mode;
+      currentDestinationLabel = MODE_META[mode].destination;
+      renderHome();
+      panel.classList.remove("mode-out");
+      panel.classList.add("mode-in");
+      triggerModeGlow();
+      panel.addEventListener("animationend", () => panel.classList.remove("mode-in"), { once: true });
+    }, { once: true });
+    showModeToast(mode);
+    return;
+  }
   activeMode = mode;
   currentDestinationLabel = MODE_META[mode].destination;
-  modeTabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.mode === mode));
   renderHome();
-  if (shouldAnnounce) showModeToast(mode);
+}
+
+function triggerModeGlow() {
+  const container = document.getElementById("homePanelContainer");
+  if (!container) return;
+  const old = container.querySelector(".mode-glow-ring");
+  if (old) old.remove();
+  const ring = document.createElement("div");
+  ring.className = "mode-glow-ring";
+  container.appendChild(ring);
+  window.setTimeout(() => { if (ring.parentNode) ring.remove(); }, 3700);
 }
 
 function setMapWidth(value) {
