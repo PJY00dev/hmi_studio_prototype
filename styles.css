@@ -430,6 +430,7 @@ button {
   inset: 0;
   z-index: 20;
   pointer-events: none;
+  border-radius: 20px;
   padding: 10px;
   background: conic-gradient(
     from var(--glow-angle),
@@ -780,6 +781,7 @@ button {
   display: grid;
   grid-template-columns: var(--connect-driving-ratio) minmax(0, 1fr);
   padding: 0;
+  z-index: 15;
   --tile-gap: 8px;
   --map-width: var(--connect-driving-ratio);
   --resize-left: var(--connect-driving-ratio);
@@ -812,7 +814,6 @@ button {
 .map-panel {
   grid-column: 1;
   position: relative;
-  overflow: hidden;
   background: transparent;
   min-width: 0;
   height: 100%;
@@ -1274,7 +1275,6 @@ button {
   border-radius: 0;
   box-shadow: none;
   border: none;
-  overflow: hidden;
 }
 
 .home-panel {
@@ -1283,7 +1283,6 @@ button {
   height: 100%;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
   padding: 0;
   background: transparent;
 }
@@ -1486,11 +1485,11 @@ button {
   height: 100%;
   min-height: 0;
   transform-origin: left top;
+  position: relative;
 }
 
 .shortcut-grid.media-landscape-host {
   display: block;
-  overflow: hidden;
   position: relative;
 }
 
@@ -1559,7 +1558,7 @@ button {
   display: block;
   --tile-pad-x: clamp(24px, 2vw, 36px);
   --tile-pad-y: clamp(34px, 3vw, 52px);
-  --tile-icon-size: clamp(44px, 3vw, 48px);
+  --tile-icon-size: 80px;
   --tile-copy-top: calc(var(--tile-pad-y) + var(--tile-icon-size) + clamp(24px, 2.25vw, 40px));
   padding: 0;
   overflow: hidden;
@@ -1599,7 +1598,7 @@ button {
 }
 
 .card-icon {
-  width: var(--tile-icon-size, clamp(44px, 3vw, 48px));
+  width: var(--tile-icon-size, 80px);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -1607,7 +1606,7 @@ button {
   color: #090909;
   font-weight: var(--type-weight-Extra_strong);
   font-size: var(--type-label-small-size);
-  border-radius: 12px;
+  border-radius: 20px;
   overflow: hidden;
   position: relative;
 }
@@ -2254,6 +2253,7 @@ svg.gnb-apps-icon {
   column-gap: 16px;
   row-gap: 20px;
   align-content: start;
+  overflow-y: auto;
 }
 
 .launcher-app {
@@ -11730,7 +11730,7 @@ svg.gnb-apps-icon {
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 100;
+  z-index: 9999;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.54), 0 2px 8px rgba(19, 20, 23, 0.12);
   touch-action: none;
   transition: background 150ms, box-shadow 150ms;
@@ -12480,76 +12480,64 @@ svg.gnb-apps-icon {
   position: relative;
   display: grid;
   grid-template-columns: 92px minmax(0, 1fr);
-  gap: 0;
+  gap: 22px;
   height: 100%;
   min-height: 0;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 24px;
-  background: var(--netflix-bg-content);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
 }
 
 /* Left Navigation Rail (92px Column) */
 .netflix-tablet-rail {
   min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  padding: 20px 6px;
-  background: transparent;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 10px 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 22px;
 }
 
 .netflix-rail-logo {
   display: flex;
   justify-content: center;
-  margin-bottom: 12px;
+  padding: 6px 4px 2px;
 }
 
 .netflix-rail-logo svg {
-  width: 32px !important;
-  height: 32px !important;
+  width: 28px !important;
+  height: 28px !important;
 }
 
 .netflix-rail-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: contents;
 }
 
 .netflix-rail-nav button {
-  min-height: 78px;
+  min-height: 76px;
   display: grid;
   place-items: center;
   gap: 6px;
   padding: 8px 4px;
   border-radius: 16px;
   background: transparent;
-  color: rgba(255, 255, 255, 0.55);
+  color: inherit;
   border: 0;
   text-align: center;
-  opacity: 1;
+  opacity: 0.7;
   width: 100% !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
-  transition: all 0.2s ease;
+  transition: opacity 150ms, background 150ms;
 }
 
 .netflix-rail-nav button.active,
 .netflix-rail-nav button:hover {
-  color: var(--netflix-text-white);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.netflix-rail-nav button.active {
-  border-left: 3px solid var(--netflix-brand-red);
-  border-radius: 4px 16px 16px 4px;
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .netflix-rail-nav button svg {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
 }
 
 .netflix-rail-nav button svg path {
@@ -12557,8 +12545,8 @@ svg.gnb-apps-icon {
 }
 
 .netflix-rail-nav button span {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: var(--type-weight-Strong);
   white-space: nowrap;
 }
 
@@ -12574,6 +12562,9 @@ svg.gnb-apps-icon {
   flex-direction: column;
   gap: 0;
   height: 100%;
+  background: var(--netflix-bg-color);
+  border-radius: 22px;
+  overflow: hidden;
 }
 
 .netflix-main-container {
@@ -13792,7 +13783,7 @@ svg.gnb-apps-icon {
   bottom: 0;
   background: #000000;
   color: var(--netflix-text-white);
-  z-index: 1000;
+  z-index: 10;
   display: grid;
   grid-template-rows: auto 1fr auto;
   padding: 40px;
@@ -13999,7 +13990,10 @@ svg.gnb-apps-icon {
 .media-app-panel.is-dragging-landscape *,
 .landscape-settings-app.is-dragging-landscape *,
 .phone-app-panel.is-dragging-landscape *,
-.radio-app-panel.is-dragging-landscape * {
+.radio-app-panel.is-dragging-landscape *,
+.netflix-tablet-shell.is-dragging-landscape *,
+.sample-radio-app.is-dragging-landscape *,
+.phone-dialer-app.is-dragging-landscape * {
   pointer-events: none !important;
 }
 

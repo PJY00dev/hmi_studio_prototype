@@ -1879,7 +1879,6 @@ function renderSpotifyTabletPanel(meta, results, selected, fallback) {
 
   return `
     <section class="media-app-panel spotify-media-app spotify-tablet-app" aria-label="${meta.title}">
-      <div class="landscape-drag-handle" aria-hidden="true"></div>
       <header class="media-tablet-topbar">
         <span class="spotify-brand-icon media-tablet-logo" aria-hidden="true">${svgIcon("spotify")}</span>
         <form class="media-search-form media-tablet-search" id="mediaSearchForm">
@@ -2113,7 +2112,6 @@ function renderYouTubeTabletPanel(meta, results, selected, fallback) {
 
   return `
     <section class="media-app-panel youtube-media-app youtube-tablet-app${isWatchMode ? " watch-mode" : " list-mode"}" aria-label="${meta.title}">
-      <div class="landscape-drag-handle" aria-hidden="true"></div>
       <header class="media-tablet-topbar youtube-topbar">
         <span class="youtube-brand-icon media-tablet-logo" aria-hidden="true">${svgIcon("youtube")}</span>
         <form class="media-search-form media-tablet-search" id="mediaSearchForm">
@@ -2856,86 +2854,145 @@ function closeLandscapeApp({ renderHomeScreen = true } = {}) {
 
 function bindLandscapeDragToClose(container) {
   if (!container || container.dataset.landscapeDragBound === "true") return;
-  const handle = container.querySelector(".landscape-drag-handle, .radio-drag-handle, .phone-drag-handle");
-  if (!handle) return;
-  handle.classList.add("landscape-drag-handle");
   container.dataset.landscapeDragBound = "true";
+
+  // 핸들을 container 안에 주입 → 컨테이너 transform에 자동으로 따라감
+  container.querySelectorAll(".landscape-drag-handle-overlay").forEach(el => el.remove());
+  if (!container.style.position) container.style.position = "relative";
+  const handle = document.createElement("div");
+  handle.className = "landscape-drag-handle landscape-drag-handle-overlay";
+  container.appendChild(handle);
 
   let isDragging = false;
   let startY = 0;
   let currentY = 0;
   let rafId = null;
+  let closeTimer = null;
   const closeThreshold = 120;
+  const velocityCloseThreshold = 0.4; // px/ms — 이 이상의 하향 속도면 거리 무관하게 닫기
+  const minDragForVelocityClose = 25; // 속도 기반 닫기를 적용할 최소 드래그 거리(px)
+
+  // 속도 추적
+  let velocityY = 0;
+  let lastPointerY = 0;
+  let lastPointerTime = 0;
+
+  // document 레벨 폴백: setPointerCapture 실패 또는 핸들 밖에서 포인터가 떨어진 경우 대비
+  const onDocPointerUp = (e) => {
+    if (!isDragging) return;
+    currentY = Math.max(0, e.clientY - startY);
+    finishDrag();
+  };
+  const onDocPointerCancel = () => {
+    if (isDragging) cancelDrag();
+  };
 
   const startDrag = (clientY) => {
     if (isDragging) return;
     isDragging = true;
     startY = clientY;
     currentY = 0;
+    velocityY = 0;
+    lastPointerY = clientY;
+    lastPointerTime = performance.now();
     container.style.transition = "none";
     container.style.willChange = "transform, opacity";
     container.classList.add("is-dragging-landscape");
+    document.addEventListener("pointerup", onDocPointerUp);
+    document.addEventListener("pointercancel", onDocPointerCancel);
   };
 
   const moveDrag = (clientY) => {
     if (!isDragging) return;
+
+    // 속도 계산: 100ms 이내의 최근 이동분만 반영해 관성 감지 정확도 유지
+    const now = performance.now();
+    const dt = now - lastPointerTime;
+    if (dt > 0 && dt < 100) {
+      velocityY = (clientY - lastPointerY) / dt;
+    }
+    lastPointerY = clientY;
+    lastPointerTime = now;
+
     currentY = Math.max(0, clientY - startY);
-    
+
     if (rafId) {
       cancelAnimationFrame(rafId);
     }
-    
+
     rafId = requestAnimationFrame(() => {
       if (!isDragging) return;
       container.style.transform = `translateY(${currentY}px)`;
       container.style.opacity = String(Math.max(0.35, 1 - currentY / 360));
+      // handle은 container 안에 있어 자동으로 따라감
     });
   };
 
   const resetContainerStyle = () => {
+    // is-dragging-landscape는 복귀 애니메이션이 완전히 끝난 후 여기서 제거한다.
+    // finishDrag 초기에 제거하면 자식 hover transition의 transitionend가 container로
+    // 버블링되어 cleanup을 조기 실행하고 복귀 애니메이션이 중단되는 버그가 발생한다.
+    container.classList.remove("is-dragging-landscape");
     container.style.willChange = "";
     container.style.transition = "";
     container.style.transform = "";
     container.style.opacity = "";
-    container.style.animation = "";
+    // animation 인라인 스타일은 의도적으로 유지한다.
+    // container 요소는 앱이 닫힐 때 DOM에서 제거되고 다음 열기 시 새로 생성되므로,
+    // "animation: none"을 남겨둬도 다음 오픈 애니메이션에 영향이 없다.
+    // 반면 여기서 초기화하면 CSS scale-up-center 가 재발동되어 프리징이 발생한다.
   };
 
   const finishDrag = () => {
     if (!isDragging) return;
     isDragging = false;
+    document.removeEventListener("pointerup", onDocPointerUp);
+    document.removeEventListener("pointercancel", onDocPointerCancel);
     if (rafId) {
       cancelAnimationFrame(rafId);
       rafId = null;
     }
 
-    container.classList.remove("is-dragging-landscape");
+    // is-dragging-landscape는 resetContainerStyle()에서 제거한다.
 
-    if (currentY > closeThreshold) {
-      // --- 닫기 경로 ---
-      // (Bug 1 fix) 스타일 정리를 closeLandscapeApp() 호출 이전에 미리 수행한다.
-      // try-catch 안에 closeLandscapeApp()을 넣으면 내부 에러가 조용히 삼켜져
-      // renderHome()이 실행되지 않아 홈 화면이 나타나지 않는 현상이 생긴다.
+    // 거리 임계값 OR 속도 임계값 충족 시 닫기
+    const shouldClose = currentY > closeThreshold ||
+      (currentY >= minDragForVelocityClose && velocityY > velocityCloseThreshold);
+
+    if (shouldClose) {
+      // --- 닫기 경로 --- (handle은 container 안에 있어 함께 이동)
       container.style.transition = "transform 220ms ease, opacity 220ms ease";
       container.style.transform = "translateY(100%)";
       container.style.opacity = "0";
-      window.setTimeout(() => {
-        resetContainerStyle();
+      closeTimer = window.setTimeout(() => {
+        closeTimer = null;
         closeLandscapeApp();
       }, 220);
     } else {
       // --- 복귀 경로 ---
-      // (Bug 2 fix) 인라인 transition + transform 제거를 고정 240ms setTimeout 대신
-      // transitionend 이벤트로 처리한다. 고정 타이머가 전환 애니메이션 완료 전에 실행되면
-      // 브라우저가 CSS 기본 animation(scale-up-center, fill-mode:both)을 재활성화해
-      // 패널이 갑자기 scale(0.5)에서 튀어오르는 끊김 현상이 발생한다.
-      // animation: none 인라인 선언으로 scale-up-center 재발동을 완전히 차단한다.
+      // RAF가 취소되어 container의 시각적 transform이 아직 currentY에 반영되지 않은
+      // 경우, translateY(0)로의 전환에서 실제 변화가 없어 transitionend가 발화하지
+      // 않는다. 이를 방지하기 위해 복귀 애니메이션 전에 currentY 위치를 동기적으로
+      // 확정하고 reflow를 강제한다.
+      if (currentY > 0) {
+        container.style.transition = "none";
+        container.style.transform = `translateY(${currentY}px)`;
+        container.style.opacity = String(Math.max(0.35, 1 - currentY / 360));
+        container.getBoundingClientRect(); // force reflow
+      }
+
       container.style.animation = "none";
       container.style.transition = "transform 220ms ease, opacity 220ms ease";
       container.style.transform = "translateY(0)";
       container.style.opacity = "1";
 
-      const onTransitionEnd = () => resetContainerStyle();
-      container.addEventListener("transitionend", onTransitionEnd, { once: true });
+      // e.target 검사: 자식 요소의 transitionend가 버블링되어 조기 cleanup 실행 방지
+      const onTransitionEnd = (e) => {
+        if (e.target !== container) return;
+        container.removeEventListener("transitionend", onTransitionEnd);
+        resetContainerStyle();
+      };
+      container.addEventListener("transitionend", onTransitionEnd);
 
       // transitionend가 발화하지 않는 예외 상황을 대비한 안전망 타이머
       window.setTimeout(() => {
@@ -2949,9 +3006,15 @@ function bindLandscapeDragToClose(container) {
   const cancelDrag = () => {
     if (!isDragging) return;
     isDragging = false;
+    document.removeEventListener("pointerup", onDocPointerUp);
+    document.removeEventListener("pointercancel", onDocPointerCancel);
     if (rafId) {
       cancelAnimationFrame(rafId);
       rafId = null;
+    }
+    if (closeTimer) {
+      window.clearTimeout(closeTimer);
+      closeTimer = null;
     }
     container.classList.remove("is-dragging-landscape");
     resetContainerStyle();
@@ -3081,7 +3144,6 @@ function renderRadioApp() {
 
   host.innerHTML = `
     <div class="sample-radio-app">
-      <div class="radio-drag-handle" id="radioDragHandle" aria-hidden="true"></div>
       <!-- L1: Header -->
       <header class="ivi_header">
         <div class="title_group">
@@ -3361,7 +3423,6 @@ function renderPhoneApp() {
 
   host.innerHTML = `
     <div class="phone-dialer-app">
-      <div class="phone-drag-handle" id="phoneDragHandle" aria-hidden="true"></div>
       <button class="media-app-back" type="button" data-close-media-app aria-label="돌아가기" style="position: absolute; left: 24px; top: 24px; background:transparent; border:none; font-size:28px; cursor:pointer; color:#131417;">‹</button>
       
       <div class="dial_title">
@@ -3573,7 +3634,7 @@ function renderMediaApp() {
   }
 
   if (isLandscapeHost) {
-    bindLandscapeDragToClose(host.querySelector(".media-app-panel"));
+    bindLandscapeDragToClose(host.querySelector(".media-app-panel") || host.querySelector(".netflix-tablet-shell") || host.querySelector(".netflix-player-view"));
   }
 
   host.querySelector("[data-close-media-app]")?.addEventListener("click", () => {
@@ -3875,7 +3936,6 @@ function openLandscapeSettingsApp(categoryId, options = {}) {
 
   shortcutGrid.innerHTML = `
     <section class="landscape-settings-app" aria-label="Vehicle settings">
-      <div class="landscape-drag-handle" aria-hidden="true"></div>
       <button class="media-app-back landscape-app-close" type="button" data-close-landscape-app aria-label="홈으로 돌아가기">‹</button>
       <aside class="settings-nav landscape-settings-nav" aria-label="Vehicle setting categories"></aside>
       <section class="settings-detail landscape-settings-detail" aria-live="polite"></section>
@@ -7642,9 +7702,6 @@ function renderHome() {
     } else {
       const item = functionById(id);
       card.className = "shortcut-card";
-      if (item.id === "energy") {
-        card.classList.add("energy-card-charging");
-      }
       card.classList.toggle("favorite-card", Boolean(FAVORITE_TILE_ITEMS[item.id]));
       card.setAttribute("aria-label", `${item.title} card, long press to edit`);
       card.innerHTML = `
@@ -7948,7 +8005,7 @@ function setMode(mode, options = {}) {
 }
 
 function triggerModeGlow() {
-  const container = document.getElementById("homePanelContainer");
+  const container = document.getElementById("shortcutGrid");
   if (!container) return;
   const old = container.querySelector(".mode-glow-ring");
   if (old) old.remove();
